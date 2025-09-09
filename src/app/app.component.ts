@@ -35,7 +35,7 @@ export class AppComponent implements OnInit {
     this.loadPdfJs().then(() => {
       this.loadPdf();
     }).catch(err => {
-      this.error = 'Failed to load PDF.js library';
+      this.error = 'Failed to load PDF.js librarys';
       console.error('PDF.js loading error:', err);
     });
   }
