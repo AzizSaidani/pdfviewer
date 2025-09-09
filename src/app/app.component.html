@@ -1,0 +1,56 @@
+<div class="pdf-container">
+  <!-- Toolbar -->
+  <div class="toolbar" *ngIf="isLoaded">
+    <div class="toolbar-section">
+      <button
+        class="btn btn-nav"
+        (click)="previousPage()"
+        [disabled]="pageNum <= 1">
+        ← Previous
+      </button>
+
+      <div class="page-controls">
+        <input
+          type="number"
+          [(ngModel)]="pageNum"
+          (change)="goToPage(pageNum)"
+          [min]="1"
+          [max]="totalPages"
+          class="page-input">
+        <span class="page-total">of {{ totalPages }}</span>
+      </div>
+
+      <button
+        class="btn btn-nav"
+        (click)="nextPage()"
+        [disabled]="pageNum >= totalPages">
+        Next →
+      </button>
+    </div>
+
+    <div class="toolbar-section">
+      <button class="btn btn-zoom" (click)="zoomOut()">−</button>
+      <span class="zoom-display">{{ (scale * 100).toFixed(0) }}%</span>
+      <button class="btn btn-zoom" (click)="zoomIn()">+</button>
+      <button class="btn btn-reset" (click)="resetZoom()">Reset</button>
+    </div>
+  </div>
+
+  <!-- PDF Canvas -->
+  <div class="pdf-content">
+    <div *ngIf="!isLoaded && !error" class="loading">
+      <div class="loading-spinner"></div>
+      <p>Loading PDF...</p>
+    </div>
+
+    <div *ngIf="error" class="error">
+      <h3>❌ Error Loading PDF</h3>
+      <p>{{ error }}</p>
+      <button class="btn btn-retry" (click)="retry()">Try Again</button>
+    </div>
+
+    <div class="canvas-container" [class.hidden]="!isLoaded || error">
+      <canvas #pdfCanvas class="pdf-canvas"></canvas>
+    </div>
+  </div>
+</div>
