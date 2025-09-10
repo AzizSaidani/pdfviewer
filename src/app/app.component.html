@@ -1,28 +1,5 @@
 <!-- app.component.html -->
 <div class="pdf-container">
-  <!-- Enhanced Toolbar with Signature Buttons -->
-  <div class="toolbar" *ngIf="isLoaded">
-    <div class="toolbar-section">
-      <button class="btn btn-zoom" (click)="zoomOut()">−</button>
-      <span class="zoom-display">{{ (scale * 100).toFixed(0) }}%</span>
-      <button class="btn btn-zoom" (click)="zoomIn()">+</button>
-      <button class="btn btn-reset" (click)="resetZoom()">Reset</button>
-    </div>
-
-    <!-- Signature Controls -->
-    <div class="toolbar-section signature-controls">
-      <button class="btn btn-signature" (click)="addInitial()">
-        📝 Initial
-      </button>
-      <button class="btn btn-signature" (click)="addSignature()">
-        ✍️ Signature
-      </button>
-      <button class="btn btn-clear" (click)="clearAllImages()" [disabled]="draggableImages.length === 0">
-        🗑️ Clear All
-      </button>
-    </div>
-  </div>
-
   <!-- PDF Content -->
   <div class="pdf-content">
     <div *ngIf="!isLoaded && !error" class="loading">
@@ -75,5 +52,20 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Signature Toolbar (Bottom, Always Visible) -->
+  <div class="toolbar signature-toolbar" *ngIf="isLoaded">
+    <button class="btn btn-signature" (click)="addInitial()">
+      📝 Initial
+    </button>
+    <button class="btn btn-signature" (click)="addSignature()">
+      ✍️ Signature
+    </button>
+    <button class="btn btn-clear"
+            (click)="clearAllImages()"
+            [disabled]="draggableImages.length === 0">
+      🗑️ Clear All
+    </button>
   </div>
 </div>
