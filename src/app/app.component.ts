@@ -15,6 +15,7 @@ interface DraggableImage {
   pageIndex: number;
   isDragging: boolean;
   isResizing: boolean;
+  isSelected: boolean;
 }
 
 @Component({
@@ -54,6 +55,7 @@ export class AppComponent implements OnInit {
 
     // Add touch event listeners for mobile
     this.setupTouchEvents();
+    this.setupGlobalClickListener();
   }
 
   private setupTouchEvents() {
@@ -63,6 +65,30 @@ export class AppComponent implements OnInit {
         e.preventDefault();
       }
     }, { passive: false });
+  }
+
+  private setupGlobalClickListener() {
+    // Listen for clicks outside of images to deselect
+    document.addEventListener('click', (event) => {
+      this.handleGlobalClick(event);
+    });
+    document.addEventListener('touchend', (event) => {
+      this.handleGlobalClick(event);
+    });
+  }
+
+  private handleGlobalClick(event: Event) {
+    const target = event.target as HTMLElement;
+
+    // Check if the click is on an image, its controls, or toolbar buttons
+    if (target.closest('.draggable-image') ||
+      target.closest('.toolbar') ||
+      this.currentDragImage) {
+      return;
+    }
+
+    // Deselect all images
+    this.draggableImages.forEach(img => img.isSelected = false);
   }
 
   private loadPdfJs(): Promise<void> {
@@ -167,6 +193,9 @@ export class AppComponent implements OnInit {
   }
 
   private addImage(src: string) {
+    // Deselect all existing images
+    this.draggableImages.forEach(img => img.isSelected = false);
+
     const newImage: DraggableImage = {
       id: `img_${this.imageIdCounter++}`,
       src: src,
@@ -176,7 +205,8 @@ export class AppComponent implements OnInit {
       height: 60,
       pageIndex: 0, // Add to first page by default
       isDragging: false,
-      isResizing: false
+      isResizing: false,
+      isSelected: true // New images are selected by default
     };
     this.draggableImages.push(newImage);
   }
@@ -185,6 +215,9 @@ export class AppComponent implements OnInit {
   onImageMouseDown(event: MouseEvent | TouchEvent, image: DraggableImage) {
     event.preventDefault();
     event.stopPropagation();
+
+    // Select this image and deselect others
+    this.selectImage(image);
 
     const clientX = event instanceof MouseEvent ? event.clientX : event.touches[0].clientX;
     const clientY = event instanceof MouseEvent ? event.clientY : event.touches[0].clientY;
@@ -212,6 +245,13 @@ export class AppComponent implements OnInit {
       document.addEventListener('touchmove', this.onGlobalTouchMove, { passive: false });
       document.addEventListener('touchend', this.onGlobalTouchEnd);
     }
+  }
+
+  private selectImage(image: DraggableImage) {
+    // Deselect all images
+    this.draggableImages.forEach(img => img.isSelected = false);
+    // Select the clicked image
+    image.isSelected = true;
   }
 
   private onGlobalMouseMove = (event: MouseEvent) => {

@@ -50,6 +50,7 @@
           class="draggable-image"
           [class.dragging]="image.isDragging"
           [class.resizing]="image.isResizing"
+          [class.selected]="image.isSelected"
           [style.left.px]="image.x"
           [style.top.px]="image.y"
           [style.width.px]="image.width"
@@ -61,15 +62,16 @@
                [alt]="image.src.includes('initial') ? 'Initial' : 'Signature'"
                draggable="false">
 
-          <!-- Remove button -->
-          <button class="remove-btn"
+          <!-- Remove button - only show when selected -->
+          <button *ngIf="image.isSelected"
+                  class="remove-btn"
                   (click)="removeImage(image)"
                   (touchend)="removeImage(image)">
             ×
           </button>
 
-          <!-- Resize handle -->
-          <div class="resize-handle"></div>
+          <!-- Resize handle - only show when selected -->
+          <div *ngIf="image.isSelected" class="resize-handle"></div>
         </div>
       </div>
     </div>

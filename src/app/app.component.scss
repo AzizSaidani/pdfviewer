@@ -303,12 +303,17 @@
 
 /* Enhanced touch support */
 @media (hover: none) and (pointer: coarse) {
-  .draggable-image {
-    border-color: rgba(0,123,255,0.3);
-  }
-
   .btn {
     padding: 10px 14px;
     font-size: 14px;
+  }
+
+  /* On touch devices, show subtle indication that image is interactive */
+  .draggable-image {
+    border-color: rgba(0,123,255,0.1);
+
+    &.selected {
+      border-color: #007bff;
+    }
   }
 }
