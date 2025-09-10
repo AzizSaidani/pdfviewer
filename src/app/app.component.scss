@@ -1,7 +1,6 @@
 .pdf-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
   font-family: Arial, sans-serif;
 }
 
@@ -75,19 +74,22 @@
 }
 
 .canvas-container {
-  width: 100%;
-  max-width: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: column; /* stack canvases vertically */
+  align-items: center;    /* center pages horizontally */
+  width: 100%;
+  gap: 16px;              /* spacing between pages */
 }
 
+
 .pdf-canvas {
-  width: 100%;
-  height: auto !important; /* make canvas scale */
-  max-width: 100%;
+  width: auto;        /* keep natural width */
+  max-width: 100%;    /* responsive on mobile */
+  height: auto !important;
   border: 1px solid #ccc;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
+
 
 .loading, .error {
   text-align: center;
