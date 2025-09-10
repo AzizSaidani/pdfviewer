@@ -1,7 +1,6 @@
-// app.component.ts
 import { Component, ElementRef, OnInit, QueryList, ViewChildren } from '@angular/core';
-import {NgForOf, NgIf} from "@angular/common";
-import { FormsModule } from "@angular/forms";
+import { NgForOf, NgIf } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 declare const pdfjsLib: any;
 
@@ -28,75 +27,49 @@ interface DraggableImage {
 export class AppComponent implements OnInit {
   @ViewChildren('pdfCanvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
 
-  title = 'pdf-viewer-app';
-
   pdfDoc: any = null;
   totalPages = 0;
-  scale = 1.0;
   isLoaded = false;
   error = '';
-
   pages: number[] = [];
   pdfUrl = 'assets/test2.pdf';
 
-  // Signature functionality
   draggableImages: DraggableImage[] = [];
   private dragOffset = { x: 0, y: 0 };
   private currentDragImage: DraggableImage | null = null;
   private imageIdCounter = 0;
 
   ngOnInit() {
-    this.loadPdfJs().then(() => {
-      this.loadPdf();
-    }).catch(err => {
-      this.error = 'Failed to load PDF.js library';
-      console.error('PDF.js loading error:', err);
-    });
+    this.loadPdfJs().then(() => this.loadPdf())
+      .catch(err => {
+        this.error = 'Failed to load PDF.js library';
+        console.error('PDF.js loading error:', err);
+      });
 
-    // Add touch event listeners for mobile
     this.setupTouchEvents();
     this.setupGlobalClickListener();
   }
 
   private setupTouchEvents() {
-    // Prevent default touch behaviors that might interfere
-    document.addEventListener('touchmove', (e) => {
-      if (this.currentDragImage) {
-        e.preventDefault();
-      }
+    document.addEventListener('touchmove', e => {
+      if (this.currentDragImage) e.preventDefault();
     }, { passive: false });
   }
 
   private setupGlobalClickListener() {
-    // Listen for clicks outside of images to deselect
-    document.addEventListener('click', (event) => {
-      this.handleGlobalClick(event);
-    });
-    document.addEventListener('touchend', (event) => {
-      this.handleGlobalClick(event);
-    });
+    document.addEventListener('click', (event) => this.handleGlobalClick(event));
+    document.addEventListener('touchend', (event) => this.handleGlobalClick(event));
   }
 
   private handleGlobalClick(event: Event) {
     const target = event.target as HTMLElement;
-
-    // Check if the click is on an image, its controls, or toolbar buttons
-    if (target.closest('.draggable-image') ||
-      target.closest('.toolbar') ||
-      this.currentDragImage) {
-      return;
-    }
-
-    // Deselect all images
+    if (target.closest('.draggable-image') || target.closest('.toolbar') || this.currentDragImage) return;
     this.draggableImages.forEach(img => img.isSelected = false);
   }
 
   private loadPdfJs(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (typeof pdfjsLib !== 'undefined') {
-        resolve();
-        return;
-      }
+      if (typeof pdfjsLib !== 'undefined') return resolve();
 
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
@@ -118,14 +91,9 @@ export class AppComponent implements OnInit {
       this.totalPages = this.pdfDoc.numPages;
       this.pages = Array.from({ length: this.totalPages }, (_, i) => i + 1);
       this.isLoaded = true;
-
-      setTimeout(() => {
-        this.renderAllPages();
-      }, 0);
-
+      setTimeout(() => this.renderAllPages(), 0);
     } catch (error: any) {
       this.error = `Failed to load PDF: ${error.message}`;
-      console.error('PDF loading error:', error);
     }
   }
 
@@ -134,46 +102,13 @@ export class AppComponent implements OnInit {
       this.pdfDoc.getPage(pageNum).then((page: any) => {
         const canvas = this.canvasRefs.toArray()[index].nativeElement;
         const ctx = canvas.getContext('2d');
-        const viewport = page.getViewport({ scale: this.scale });
+        const viewport = page.getViewport({ scale: 1.0 });
 
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
-        const renderContext = {
-          canvasContext: ctx,
-          viewport: viewport
-        };
-        page.render(renderContext);
-      }).catch((error: any) => {
-        this.error = `Failed to render page ${pageNum}: ${error.message}`;
+        page.render({ canvasContext: ctx, viewport });
       });
-    });
-  }
-
-  // Zoom methods
-  zoomIn() {
-    this.scale += 0.1;
-    this.updateImagesScale();
-    this.renderAllPages();
-  }
-
-  zoomOut() {
-    if (this.scale <= 0.3) return;
-    this.scale -= 0.1;
-    this.updateImagesScale();
-    this.renderAllPages();
-  }
-
-  resetZoom() {
-    this.scale = 1.0;
-    this.updateImagesScale();
-    this.renderAllPages();
-  }
-
-  private updateImagesScale() {
-    // Update image positions and sizes based on new scale
-    this.draggableImages.forEach(img => {
-      // You might want to implement more sophisticated scaling logic here
     });
   }
 
@@ -183,61 +118,74 @@ export class AppComponent implements OnInit {
     this.loadPdf();
   }
 
-  // Signature functionality
-  addInitial() {
-    this.addImage('assets/initial.png');
-  }
-
-  addSignature() {
-    this.addImage('assets/signature.png');
-  }
+  addInitial() { this.addImage('assets/initial.png'); }
+  addSignature() { this.addImage('assets/signature.png'); }
 
   private addImage(src: string) {
-    // Deselect all existing images
     this.draggableImages.forEach(img => img.isSelected = false);
+
+    const container = document.querySelector('.canvas-container') as HTMLElement;
+
+    const visiblePageIndex = this.canvasRefs.toArray().findIndex(canvasRef => {
+      const rect = canvasRef.nativeElement.getBoundingClientRect();
+      return rect.top < window.innerHeight && rect.bottom > 0;
+    });
+
+    const pageIndex = visiblePageIndex >= 0 ? visiblePageIndex : 0;
+    const pageCanvas = this.canvasRefs.toArray()[pageIndex].nativeElement;
+    const pageRect = pageCanvas.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    // Calculate position relative to container
+    const centerX = pageRect.left - containerRect.left + pageCanvas.width / 2;
+    const centerY = pageRect.top - containerRect.top + pageCanvas.height / 2;
 
     const newImage: DraggableImage = {
       id: `img_${this.imageIdCounter++}`,
-      src: src,
-      x: 50,
-      y: 50,
+      src,
+      x: centerX - 60,
+      y: centerY - 30,
       width: 120,
       height: 60,
-      pageIndex: 0, // Add to first page by default
+      pageIndex,
       isDragging: false,
       isResizing: false,
-      isSelected: true // New images are selected by default
+      isSelected: true
     };
+
     this.draggableImages.push(newImage);
+
+    setTimeout(() => {
+      container.scrollTo({
+        top: newImage.y - container.clientHeight / 2 + newImage.height / 2,
+        behavior: 'smooth'
+      });
+    }, 0);
   }
 
-  // Touch/Mouse event handlers
   onImageMouseDown(event: MouseEvent | TouchEvent, image: DraggableImage) {
     event.preventDefault();
     event.stopPropagation();
-
-    // Select this image and deselect others
     this.selectImage(image);
 
     const clientX = event instanceof MouseEvent ? event.clientX : event.touches[0].clientX;
     const clientY = event instanceof MouseEvent ? event.clientY : event.touches[0].clientY;
 
-    // Check if clicking on resize handle (bottom-right corner)
     const target = event.target as HTMLElement;
     const rect = target.getBoundingClientRect();
     const isResizeHandle = (clientX > rect.right - 20) && (clientY > rect.bottom - 20);
 
     if (isResizeHandle) {
       image.isResizing = true;
-      this.currentDragImage = image;
     } else {
       image.isDragging = true;
-      this.currentDragImage = image;
-      this.dragOffset.x = clientX - rect.left;
-      this.dragOffset.y = clientY - rect.top;
+      const container = document.querySelector('.canvas-container') as HTMLElement;
+      const containerRect = container.getBoundingClientRect();
+      this.dragOffset.x = clientX - (containerRect.left + image.x);
+      this.dragOffset.y = clientY - (containerRect.top + image.y);
     }
+    this.currentDragImage = image;
 
-    // Add global listeners
     if (event instanceof MouseEvent) {
       document.addEventListener('mousemove', this.onGlobalMouseMove);
       document.addEventListener('mouseup', this.onGlobalMouseUp);
@@ -248,45 +196,32 @@ export class AppComponent implements OnInit {
   }
 
   private selectImage(image: DraggableImage) {
-    // Deselect all images
     this.draggableImages.forEach(img => img.isSelected = false);
-    // Select the clicked image
     image.isSelected = true;
   }
 
   private onGlobalMouseMove = (event: MouseEvent) => {
-    if (this.currentDragImage) {
-      this.updateImagePosition(event.clientX, event.clientY);
-    }
-  }
+    if (this.currentDragImage) this.updateImagePosition(event.clientX, event.clientY);
+  };
 
   private onGlobalTouchMove = (event: TouchEvent) => {
     event.preventDefault();
-    if (this.currentDragImage) {
+    if (this.currentDragImage)
       this.updateImagePosition(event.touches[0].clientX, event.touches[0].clientY);
-    }
-  }
+  };
 
   private updateImagePosition(clientX: number, clientY: number) {
     if (!this.currentDragImage) return;
 
-    const canvasContainer = document.querySelector('.canvas-container') as HTMLElement;
-    const containerRect = canvasContainer.getBoundingClientRect();
+    const container = document.querySelector('.canvas-container') as HTMLElement;
+    const containerRect = container.getBoundingClientRect();
 
     if (this.currentDragImage.isResizing) {
-      // Handle resizing
-      const newWidth = Math.max(30, clientX - (containerRect.left + this.currentDragImage.x));
-      const newHeight = Math.max(20, clientY - (containerRect.top + this.currentDragImage.y));
-      this.currentDragImage.width = newWidth;
-      this.currentDragImage.height = newHeight;
+      this.currentDragImage.width = Math.max(30, clientX - (containerRect.left + this.currentDragImage.x));
+      this.currentDragImage.height = Math.max(20, clientY - (containerRect.top + this.currentDragImage.y));
     } else if (this.currentDragImage.isDragging) {
-      // Handle dragging
       this.currentDragImage.x = clientX - containerRect.left - this.dragOffset.x;
       this.currentDragImage.y = clientY - containerRect.top - this.dragOffset.y;
-
-      // Keep within bounds
-      this.currentDragImage.x = Math.max(0, Math.min(this.currentDragImage.x, containerRect.width - this.currentDragImage.width));
-      this.currentDragImage.y = Math.max(0, Math.min(this.currentDragImage.y, containerRect.height - this.currentDragImage.height));
     }
   }
 
@@ -294,13 +229,13 @@ export class AppComponent implements OnInit {
     this.resetDragState();
     document.removeEventListener('mousemove', this.onGlobalMouseMove);
     document.removeEventListener('mouseup', this.onGlobalMouseUp);
-  }
+  };
 
   private onGlobalTouchEnd = () => {
     this.resetDragState();
     document.removeEventListener('touchmove', this.onGlobalTouchMove);
     document.removeEventListener('touchend', this.onGlobalTouchEnd);
-  }
+  };
 
   private resetDragState() {
     if (this.currentDragImage) {
@@ -311,10 +246,7 @@ export class AppComponent implements OnInit {
   }
 
   removeImage(image: DraggableImage) {
-    const index = this.draggableImages.indexOf(image);
-    if (index > -1) {
-      this.draggableImages.splice(index, 1);
-    }
+    this.draggableImages = this.draggableImages.filter(img => img !== image);
   }
 
   clearAllImages() {

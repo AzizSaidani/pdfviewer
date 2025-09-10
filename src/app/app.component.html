@@ -23,6 +23,7 @@
       <!-- Draggable Images Overlay -->
       <div class="images-overlay">
         <div
+          [id]="image.id"
           *ngFor="let image of draggableImages"
           class="draggable-image"
           [class.dragging]="image.isDragging"
