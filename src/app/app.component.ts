@@ -29,7 +29,7 @@ export class AppComponent implements OnInit {
   isLoaded = false;
   error = '';
 
-  pdfUrl = 'assets/test.pdf';
+  pdfUrl = 'assets/test2.pdf';
 
   ngOnInit() {
     this.loadPdfJs().then(() => {
