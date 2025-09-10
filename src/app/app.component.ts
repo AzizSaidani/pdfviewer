@@ -158,8 +158,6 @@ export class AppComponent implements OnInit {
     };
 
     this.draggableImages.push(newImage);
-
-    // No scroll adjustment needed since the image is placed in the viewport center
   }
 
   onImageMouseDown(event: MouseEvent | TouchEvent, image: DraggableImage) {
@@ -216,8 +214,13 @@ export class AppComponent implements OnInit {
     const containerRect = container.getBoundingClientRect();
 
     if (this.currentDragImage.isResizing) {
-      this.currentDragImage.width = Math.max(30, clientX - (containerRect.left + this.currentDragImage.x));
-      this.currentDragImage.height = Math.max(20, clientY - (containerRect.top + this.currentDragImage.y));
+      // Calculate new dimensions based on touch/mouse position
+      const newWidth = Math.max(30, clientX - (containerRect.left + this.currentDragImage.x));
+      const newHeight = Math.max(20, clientY - (containerRect.top + this.currentDragImage.y));
+      // Maintain aspect ratio by updating both dimensions proportionally
+      const aspectRatio = this.currentDragImage.width / this.currentDragImage.height;
+      this.currentDragImage.width = newWidth;
+      this.currentDragImage.height = newWidth / aspectRatio;
     } else if (this.currentDragImage.isDragging) {
       this.currentDragImage.x = clientX - containerRect.left - this.dragOffset.x;
       this.currentDragImage.y = clientY - containerRect.top - this.dragOffset.y;
