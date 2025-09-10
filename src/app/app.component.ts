@@ -32,7 +32,7 @@ export class AppComponent implements OnInit {
   isLoaded = false;
   error = '';
   pages: number[] = [];
-  pdfUrl = 'assets/test2.pdf';
+  pdfUrl = 'assets/test3.pdf';
 
   draggableImages: DraggableImage[] = [];
   private dragOffset = { x: 0, y: 0 };
@@ -124,27 +124,31 @@ export class AppComponent implements OnInit {
   private addImage(src: string) {
     this.draggableImages.forEach(img => img.isSelected = false);
 
-    const container = document.querySelector('.canvas-container') as HTMLElement;
-
-    const visiblePageIndex = this.canvasRefs.toArray().findIndex(canvasRef => {
-      const rect = canvasRef.nativeElement.getBoundingClientRect();
-      return rect.top < window.innerHeight && rect.bottom > 0;
-    });
-
-    const pageIndex = visiblePageIndex >= 0 ? visiblePageIndex : 0;
-    const pageCanvas = this.canvasRefs.toArray()[pageIndex].nativeElement;
-    const pageRect = pageCanvas.getBoundingClientRect();
+    const container = document.querySelector('.pdf-content') as HTMLElement;
     const containerRect = container.getBoundingClientRect();
+    const scrollTop = container.scrollTop;
 
-    // Calculate position relative to container
-    const centerX = pageRect.left - containerRect.left + pageCanvas.width / 2;
-    const centerY = pageRect.top - containerRect.top + pageCanvas.height / 2;
+    // Calculate the center of the current viewport
+    const centerX = containerRect.width / 2;
+    const centerY = scrollTop + window.innerHeight / 2 - containerRect.top;
+
+    // Determine the page index for rendering purposes (closest page to viewport center)
+    let pageIndex = 0;
+    let minDistance = Infinity;
+    this.canvasRefs.toArray().forEach((canvasRef, index) => {
+      const rect = canvasRef.nativeElement.getBoundingClientRect();
+      const distance = Math.abs(rect.top + rect.height / 2 - window.innerHeight / 2);
+      if (distance < minDistance) {
+        minDistance = distance;
+        pageIndex = index;
+      }
+    });
 
     const newImage: DraggableImage = {
       id: `img_${this.imageIdCounter++}`,
       src,
-      x: centerX - 60,
-      y: centerY - 30,
+      x: centerX - 60, // Center horizontally in the container
+      y: centerY - 30, // Center vertically in the viewport
       width: 120,
       height: 60,
       pageIndex,
@@ -155,12 +159,7 @@ export class AppComponent implements OnInit {
 
     this.draggableImages.push(newImage);
 
-    setTimeout(() => {
-      container.scrollTo({
-        top: newImage.y - container.clientHeight / 2 + newImage.height / 2,
-        behavior: 'smooth'
-      });
-    }, 0);
+    // No scroll adjustment needed since the image is placed in the viewport center
   }
 
   onImageMouseDown(event: MouseEvent | TouchEvent, image: DraggableImage) {
@@ -179,7 +178,7 @@ export class AppComponent implements OnInit {
       image.isResizing = true;
     } else {
       image.isDragging = true;
-      const container = document.querySelector('.canvas-container') as HTMLElement;
+      const container = document.querySelector('.pdf-content') as HTMLElement;
       const containerRect = container.getBoundingClientRect();
       this.dragOffset.x = clientX - (containerRect.left + image.x);
       this.dragOffset.y = clientY - (containerRect.top + image.y);
@@ -213,7 +212,7 @@ export class AppComponent implements OnInit {
   private updateImagePosition(clientX: number, clientY: number) {
     if (!this.currentDragImage) return;
 
-    const container = document.querySelector('.canvas-container') as HTMLElement;
+    const container = document.querySelector('.pdf-content') as HTMLElement;
     const containerRect = container.getBoundingClientRect();
 
     if (this.currentDragImage.isResizing) {
@@ -222,6 +221,24 @@ export class AppComponent implements OnInit {
     } else if (this.currentDragImage.isDragging) {
       this.currentDragImage.x = clientX - containerRect.left - this.dragOffset.x;
       this.currentDragImage.y = clientY - containerRect.top - this.dragOffset.y;
+
+      // Update pageIndex based on the new position
+      let minDistance = Infinity;
+      let newPageIndex = this.currentDragImage.pageIndex;
+      this.canvasRefs.toArray().forEach((canvasRef, index) => {
+        const rect = canvasRef.nativeElement.getBoundingClientRect();
+        const canvasTop = rect.top - containerRect.top;
+        const canvasBottom = canvasTop + rect.height;
+        const imageCenterY = this.currentDragImage!.y + this.currentDragImage!.height / 2;
+        if (imageCenterY >= canvasTop && imageCenterY <= canvasBottom) {
+          const distance = Math.abs(imageCenterY - (canvasTop + rect.height / 2));
+          if (distance < minDistance) {
+            minDistance = distance;
+            newPageIndex = index;
+          }
+        }
+      });
+      this.currentDragImage.pageIndex = newPageIndex;
     }
   }
 
