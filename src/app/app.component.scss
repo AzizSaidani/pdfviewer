@@ -318,6 +318,7 @@
   }
 }
 
+/* Bottom Toolbar */
 .signature-toolbar {
   position: fixed;
   bottom: 0;
@@ -328,6 +329,19 @@
   padding: 10px;
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 12px;
   z-index: 100;
+
+  /* Prevent wrapping on small screens */
+  flex-wrap: nowrap;
+  overflow-x: auto; /* allow scrolling if buttons overflow */
 }
+
+/* Make buttons shrink nicely on small screens */
+.signature-toolbar .btn {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  text-align: center;
+}
+
