@@ -1,7 +1,10 @@
+// app.component.scss
 .pdf-container {
   display: flex;
   flex-direction: column;
   font-family: Arial, sans-serif;
+  height: 100vh;
+  position: relative;
 }
 
 .toolbar {
@@ -14,6 +17,7 @@
   flex-wrap: wrap;
   gap: 8px;
   font-size: 14px;
+  min-height: 60px;
 }
 
 .toolbar-section {
@@ -21,6 +25,12 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.signature-controls {
+  border-left: 1px solid #ddd;
+  padding-left: 10px;
+  margin-left: 10px;
 }
 
 .btn {
@@ -31,6 +41,7 @@
   border-radius: 4px;
   transition: background-color 0.2s;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .btn:hover {
@@ -43,19 +54,24 @@
   cursor: not-allowed;
 }
 
-.page-controls {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.btn-signature {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
 }
 
-.page-input {
-  width: 50px;
-  padding: 4px;
-  font-size: 14px;
-  text-align: center;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.btn-signature:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.btn-clear {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.btn-clear:hover:not(:disabled) {
+  background-color: #c82333;
 }
 
 .zoom-display {
@@ -67,29 +83,120 @@
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   overflow: auto;
   background-color: #f0f0f0;
   padding: 10px;
+  position: relative;
 }
 
 .canvas-container {
   display: flex;
-  flex-direction: column; /* stack canvases vertically */
-  align-items: center;    /* center pages horizontally */
+  flex-direction: column;
+  align-items: center;
   width: 100%;
-  gap: 16px;              /* spacing between pages */
+  gap: 16px;
+  position: relative;
 }
 
+.page-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
 
 .pdf-canvas {
-  width: auto;        /* keep natural width */
-  max-width: 100%;    /* responsive on mobile */
+  width: auto;
+  max-width: 100%;
   height: auto !important;
   border: 1px solid #ccc;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  background: white;
 }
 
+/* Draggable Images Overlay */
+.images-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Allow clicking through to PDF */
+  z-index: 10;
+}
+
+.draggable-image {
+  position: absolute;
+  border: 2px dashed transparent;
+  cursor: move;
+  pointer-events: auto; /* Enable interaction with images */
+  user-select: none;
+  touch-action: none;
+  z-index: 20;
+
+  &:hover, &.dragging, &.resizing {
+    border-color: #007bff;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+}
+
+/* Remove button */
+.remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  z-index: 30;
+
+  &:hover {
+    background-color: #c82333;
+  }
+}
+
+/* Resize handle */
+.resize-handle {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  background-color: #007bff;
+  cursor: se-resize;
+  z-index: 25;
+  border-radius: 2px;
+
+  &:after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid white;
+    border-bottom: 2px solid white;
+  }
+}
 
 .loading, .error {
   text-align: center;
@@ -111,42 +218,97 @@
   100% { transform: rotate(360deg); }
 }
 
+.hidden {
+  display: none;
+}
+
 /* Mobile / WebView responsive adjustments */
 @media (max-width: 768px) {
   .toolbar {
     flex-direction: column;
     gap: 10px;
     font-size: 13px;
+    min-height: auto;
+    padding: 10px;
   }
 
-  .page-input {
-    width: 40px;
-    font-size: 13px;
+  .toolbar-section {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .signature-controls {
+    border-left: none;
+    border-top: 1px solid #ddd;
+    padding-left: 0;
+    margin-left: 0;
+    padding-top: 10px;
+    margin-top: 10px;
   }
 
   .btn {
-    padding: 5px 8px;
+    padding: 8px 12px;
     font-size: 13px;
   }
 
   .pdf-content {
     padding: 5px;
   }
+
+  .draggable-image {
+    /* Make touch targets larger on mobile */
+    min-width: 40px;
+    min-height: 25px;
+  }
+
+  .remove-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    top: -10px;
+    right: -10px;
+  }
+
+  .resize-handle {
+    width: 20px;
+    height: 20px;
+    bottom: -6px;
+    right: -6px;
+  }
 }
 
 @media (max-width: 480px) {
   .toolbar {
     font-size: 12px;
-    padding: 6px 8px;
+    padding: 8px;
   }
 
   .btn {
-    padding: 4px 6px;
+    padding: 6px 10px;
     font-size: 12px;
   }
 
-  .page-input {
-    width: 35px;
-    font-size: 12px;
+  .zoom-display {
+    min-width: 35px;
+  }
+}
+
+/* Prevent text selection during drag operations */
+.dragging, .resizing {
+  * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+}
+
+/* Enhanced touch support */
+@media (hover: none) and (pointer: coarse) {
+  .draggable-image {
+    border-color: rgba(0,123,255,0.3);
+  }
+
+  .btn {
+    padding: 10px 14px;
+    font-size: 14px;
   }
 }

@@ -1,11 +1,25 @@
+<!-- app.component.html -->
 <div class="pdf-container">
-  <!-- Toolbar (keep it if you want zoom/reset options) -->
+  <!-- Enhanced Toolbar with Signature Buttons -->
   <div class="toolbar" *ngIf="isLoaded">
     <div class="toolbar-section">
       <button class="btn btn-zoom" (click)="zoomOut()">−</button>
       <span class="zoom-display">{{ (scale * 100).toFixed(0) }}%</span>
       <button class="btn btn-zoom" (click)="zoomIn()">+</button>
       <button class="btn btn-reset" (click)="resetZoom()">Reset</button>
+    </div>
+
+    <!-- Signature Controls -->
+    <div class="toolbar-section signature-controls">
+      <button class="btn btn-signature" (click)="addInitial()">
+        📝 Initial
+      </button>
+      <button class="btn btn-signature" (click)="addSignature()">
+        ✍️ Signature
+      </button>
+      <button class="btn btn-clear" (click)="clearAllImages()" [disabled]="draggableImages.length === 0">
+        🗑️ Clear All
+      </button>
     </div>
   </div>
 
@@ -22,10 +36,41 @@
       <button class="btn btn-retry" (click)="retry()">Try Again</button>
     </div>
 
-    <!-- Multi-page scroll container -->
+    <!-- Multi-page scroll container with draggable images -->
     <div class="canvas-container" [class.hidden]="!isLoaded || error">
-      <div *ngFor="let page of pages; let i = index">
+      <!-- PDF Pages -->
+      <div class="page-wrapper" *ngFor="let page of pages; let i = index">
         <canvas #pdfCanvas class="pdf-canvas"></canvas>
+      </div>
+
+      <!-- Draggable Images Overlay -->
+      <div class="images-overlay">
+        <div
+          *ngFor="let image of draggableImages"
+          class="draggable-image"
+          [class.dragging]="image.isDragging"
+          [class.resizing]="image.isResizing"
+          [style.left.px]="image.x"
+          [style.top.px]="image.y"
+          [style.width.px]="image.width"
+          [style.height.px]="image.height"
+          (mousedown)="onImageMouseDown($event, image)"
+          (touchstart)="onImageMouseDown($event, image)">
+
+          <img [src]="image.src"
+               [alt]="image.src.includes('initial') ? 'Initial' : 'Signature'"
+               draggable="false">
+
+          <!-- Remove button -->
+          <button class="remove-btn"
+                  (click)="removeImage(image)"
+                  (touchend)="removeImage(image)">
+            ×
+          </button>
+
+          <!-- Resize handle -->
+          <div class="resize-handle"></div>
+        </div>
       </div>
     </div>
   </div>
