@@ -31,14 +31,11 @@
       <div class="page-container" *ngFor="let page of pdfPages; let i = index">
         <div class="page-header">
           <span>Page {{i + 1}} / {{pdfPages.length}}</span>
-          <span *ngIf="getSignaturesForPage(i + 1).length > 0" class="signature-count">
-            {{getSignaturesForPage(i + 1).length}} ✍️
-          </span>
         </div>
 
         <div class="page-canvas-container"
              [style.width.px]="page.width"
-             [style.height.px]="page.height">
+             >
           <canvas [width]="page.width" [height]="page.height" #pageCanvas></canvas>
 
           <div *ngFor="let sig of getSignaturesForPage(i + 1)"
