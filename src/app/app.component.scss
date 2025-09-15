@@ -14,7 +14,7 @@
   background: white;
   padding: 1.5rem 2rem;
   border-bottom: 1px solid #ddd;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -38,11 +38,10 @@
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 6px;
-  cursor: pointer adds a pointer cursor to indicate interactivity;
+  cursor: pointer;
   font-weight: 500;
   font-size: 0.9rem;
   transition: all 0.2s ease;
-  text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -60,15 +59,6 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
-}
-
-.btn-primary {
-  background: #007bff;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #0056b3;
 }
 
 .btn-secondary {
@@ -143,105 +133,6 @@
   opacity: 0.3;
 }
 
-/* Sidebar Styles */
-.sidebar {
-  width: 300px;
-  background: white;
-  border-right: 1px solid #ddd;
-  padding: 1.5rem;
-  overflow-y: auto;
-}
-
-.sidebar h3, .sidebar h4 {
-  margin: 0 0 1rem 0;
-  color: #333;
-  font-weight: 600;
-}
-
-.sidebar h4 {
-  font-size: 1.1rem;
-}
-
-.signature-list {
-  margin-bottom: 2rem;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.signature-item {
-  position: relative;
-  margin-bottom: 0.5rem;
-  border: 2px solid #ddd;
-  border-radius: 6px;
-  padding: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: white;
-}
-
-.signature-item:hover {
-  border-color: #007bff;
-  box-shadow: 0 2px 4px rgba(0,123,255,0.1);
-}
-
-.signature-thumbnail {
-  width: 100%;
-  height: 60px;
-  object-fit: contain;
-  background: white;
-}
-
-.signature-info {
-  margin-top: 0.5rem;
-  text-align: center;
-}
-
-.signature-info small {
-  color: #666;
-  font-size: 0.8rem;
-}
-
-.remove-btn {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 50%;
-  background: #dc3545;
-  color: white;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.remove-btn:hover {
-  background: #c82333;
-}
-
-.signature-instructions {
-  background: #f8f9fa;
-  padding: 1rem;
-  border-radius: 6px;
-  border: 1px solid #e9ecef;
-}
-
-.signature-instructions ol {
-  margin: 0;
-  padding-left: 1.2rem;
-}
-
-.signature-instructions li {
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  color: #495057;
-}
-
 /* PDF Viewer Styles */
 .pdf-viewer {
   flex: 1;
@@ -254,7 +145,7 @@
   margin-bottom: 2rem;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
@@ -298,17 +189,18 @@ canvas {
   border-radius: 4px;
   transition: all 0.2s;
   background: rgba(255, 255, 255, 0.1);
+  animation: fadeIn 0.3s ease;
 }
 
 .placed-signature:hover {
   border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }
 
 .signature-image {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   pointer-events: none;
 }
 
@@ -365,22 +257,16 @@ canvas {
   cursor: se-resize;
 }
 
-.pdf-footer {
-  text-align: center;
-  padding: 1rem;
-  background: white;
-  border-radius: 6px;
-  margin-top: 1rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.pdf-footer p {
-  margin: 0;
-  color: #666;
-}
-
-.pdf-footer strong {
-  color: #007bff;
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Mobile Responsive */
@@ -405,13 +291,6 @@ canvas {
     height: auto;
   }
 
-  .sidebar {
-    width: 100%;
-    max-height: 250px;
-    border-right: none;
-    border-bottom: 1px solid #ddd;
-  }
-
   .pdf-viewer {
     padding: 1rem;
   }
@@ -427,52 +306,9 @@ canvas {
   }
 }
 
-/* Loading and Animation States */
-.signature-item {
-  animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.placed-signature {
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Focus states for accessibility */
-.btn:focus {
-  outline: 2px solid #007bff;
-  outline-offset: 2px;
-}
-
-.signature-item:focus {
-  outline: 2px solid #007bff;
-  outline-offset: 2px;
-}
-
 /* Print styles */
 @media print {
-  .header,
-  .sidebar {
+  .header {
     display: none;
   }
 

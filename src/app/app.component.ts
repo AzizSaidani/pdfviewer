@@ -52,21 +52,6 @@ export class AppComponent implements OnInit {
     img.src = 'assets/signature.png';
   }
 
-  async onFileSelected(event: any) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      this.pdfDocument = await pdfjsLib.getDocument(arrayBuffer).promise;
-      await this.renderPDF();
-      this.pdfLoaded = true;
-      this.signatures = [];
-    } catch (error) {
-      console.error('Error loading PDF:', error);
-      alert('Error loading PDF file');
-    }
-  }
 
   async loadTestPDF() {
     try {
@@ -121,16 +106,6 @@ export class AppComponent implements OnInit {
     }
   }
 
-  onSignatureSelected(event: any) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      this.currentSignature = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  }
 
   addSignature() {
     if (!this.currentSignature || !this.pdfLoaded) return;
