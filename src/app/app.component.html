@@ -1,72 +1,127 @@
-<!-- app.component.html -->
-<div class="pdf-container">
-  <!-- PDF Content -->
-  <div class="pdf-content">
-    <div *ngIf="!isLoaded && !error" class="loading">
-      <div class="loading-spinner"></div>
-      <p>Loading PDF...</p>
+<div class="app-container">
+  <header class="header">
+    <h1>PDF Document Signer</h1>
+    <div class="controls">
+      <input
+        type="file"
+        #fileInput
+        accept=".pdf"
+        (change)="onFileSelected($event)"
+        style="display: none">
+      <button (click)="fileInput.click()" class="btn btn-primary">
+        📄 Load PDF
+      </button>
+
+      <button (click)="loadTestPDF()" class="btn btn-info">
+        📋 Load Test PDF
+      </button>
+
+      <input
+        type="file"
+        #signatureInput
+        accept="image/*"
+        (change)="onSignatureSelected($event)"
+        style="display: none">
+      <button (click)="signatureInput.click()" class="btn btn-secondary" [disabled]="!pdfLoaded">
+        ✏️ Load Signature
+      </button>
+
+      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature">
+        ➕ Add Signature
+      </button>
+
+      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0">
+        💾 Save PDF
+      </button>
+
+      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0">
+        🗑️ Clear All
+      </button>
     </div>
+  </header>
 
-    <div *ngIf="error" class="error">
-      <h3>❌ Error Loading PDF</h3>
-      <p>{{ error }}</p>
-      <button class="btn btn-retry" (click)="retry()">Try Again</button>
-    </div>
-
-    <!-- Multi-page scroll container with draggable images -->
-    <div class="canvas-container" [class.hidden]="!isLoaded || error">
-      <!-- PDF Pages -->
-      <div class="page-wrapper" *ngFor="let page of pages; let i = index">
-        <canvas #pdfCanvas class="pdf-canvas"></canvas>
-      </div>
-
-      <!-- Draggable Images Overlay -->
-      <div class="images-overlay">
-        <div
-          [id]="image.id"
-          *ngFor="let image of draggableImages"
-          class="draggable-image"
-          [class.dragging]="image.isDragging"
-          [class.resizing]="image.isResizing"
-          [class.selected]="image.isSelected"
-          [style.left.px]="image.x"
-          [style.top.px]="image.y"
-          [style.width.px]="image.width"
-          [style.height.px]="image.height"
-          (mousedown)="onImageMouseDown($event, image)"
-          (touchstart)="onImageMouseDown($event, image)">
-
-          <img [src]="image.src"
-               [alt]="image.src.includes('initial') ? 'Initial' : 'Signature'"
-               draggable="false">
-
-          <!-- Remove button - only show when selected -->
-          <button *ngIf="image.isSelected"
-                  class="remove-btn"
-                  (click)="removeImage(image)"
-                  (touchend)="removeImage(image)">
-            ×
-          </button>
-
-          <!-- Resize handle - only show when selected -->
-          <div *ngIf="image.isSelected" class="resize-handle"></div>
+  <div class="main-content" *ngIf="!pdfLoaded">
+    <div class="upload-area">
+      <div class="upload-message">
+        <h2>Upload a PDF to get started</h2>
+        <p>Click "Load PDF" to select your document or "Load Test PDF" to use the sample document</p>
+        <div class="upload-icons">
+          📄 📝 ✏️
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Signature Toolbar (Bottom, Always Visible) -->
-  <div class="toolbar signature-toolbar" *ngIf="isLoaded">
-    <button class="btn btn-signature" (click)="addInitial()">
-      📝 Initial
-    </button>
-    <button class="btn btn-signature" (click)="addSignature()">
-      ✍️ Signature
-    </button>
-    <button class="btn btn-clear"
-            (click)="clearAllImages()"
-            [disabled]="draggableImages.length === 0">
-      🗑️ Clear
-    </button>
+  <div class="main-content" *ngIf="pdfLoaded">
+    <div class="sidebar">
+      <h3>Signatures</h3>
+      <div class="signature-list" *ngIf="signatures.length > 0">
+        <div
+          *ngFor="let sig of signatures; trackBy: trackSignature"
+          class="signature-item"
+          (click)="selectSignature(sig.id)">
+          <img [src]="sig.imageData" alt="Signature" class="signature-thumbnail">
+          <div class="signature-info">
+            <small>Page {{sig.page}}</small>
+          </div>
+          <button (click)="removeSignature(sig.id)" class="remove-btn" title="Remove signature">×</button>
+        </div>
+      </div>
+
+      <div class="signature-instructions">
+        <h4>Instructions</h4>
+        <ol>
+          <li>Load a PDF document</li>
+          <li>A default signature will be loaded from assets/signature.png</li>
+          <li>Or load your own signature image</li>
+          <li>Click "Add Signature" to place the signature on the current page</li>
+          <li>Drag the signature to position it</li>
+          <li>Resize signatures using the resize handle</li>
+          <li>Save the signed PDF when done</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="pdf-viewer" #pdfViewer>
+      <div class="page-container" *ngFor="let page of pdfPages; let i = index">
+        <div class="page-header">
+          <span>Page {{i + 1}} of {{pdfPages.length}}</span>
+          <div class="page-info">
+            <span class="signature-count" *ngIf="getSignaturesForPage(i + 1).length > 0">
+              {{getSignaturesForPage(i + 1).length}} signature(s)
+            </span>
+          </div>
+        </div>
+        <div
+          class="page-canvas-container"
+          [style.width.px]="page.width"
+          [style.height.px]="page.height">
+          <canvas
+            [width]="page.width"
+            [height]="page.height"
+            #pageCanvas></canvas>
+
+          <div
+            *ngFor="let sig of getSignaturesForPage(i + 1)"
+            class="placed-signature"
+            [style.left.px]="sig.x"
+            [style.top.px]="sig.y"
+            [style.width.px]="sig.width"
+            [style.height.px]="sig.height"
+            (mousedown)="startDrag(sig, $event)"
+            [title]="'Signature on page ' + (i + 1)">
+            <img [src]="sig.imageData" alt="Signature" class="signature-image">
+            <button class="delete-signature" (click)="removeSignature(sig.id)" title="Delete signature">×</button>
+            <div class="resize-handles">
+              <div class="resize-handle resize-se" (mousedown)="startResize(sig, $event)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pdf-footer" *ngIf="pdfPages.length > 0">
+        <p>Total signatures placed: <strong>{{signatures.length}}</strong></p>
+      </div>
+    </div>
   </div>
 </div>

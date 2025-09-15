@@ -1,233 +1,486 @@
-/* Full CSS for PDF viewer with fixed bottom toolbar */
-
-.pdf-container {
-  display: flex;
-  flex-direction: column;
-  font-family: Arial, sans-serif;
-  height: 100vh;           /* Full viewport height */
-  position: relative;
-  overflow: hidden;         /* Prevent outer scroll */
-}
-
-.pdf-content {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  overflow-y: auto;         /* Only inner scroll */
-  background-color: #f0f0f0;
-  padding: 10px;
-  padding-bottom: 100px;    /* Space for toolbar */
-  position: relative;
+* {
   box-sizing: border-box;
 }
 
-.canvas-container {
+.app-container {
+  min-height: 100vh;
+  background: #f5f5f5;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+}
+
+/* Header Styles */
+.header {
+  background: white;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header h1 {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.controls {
   display: flex;
-  flex-direction: column;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Button Styles */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer adds a pointer cursor to indicate interactivity;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
   align-items: center;
-  width: 100%;
-  gap: 16px;
-  position: relative;
+  gap: 0.5rem;
 }
 
-.page-wrapper {
-  position: relative;
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #545b62;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #1e7e34;
+}
+
+.btn-warning {
+  background: #ffc107;
+  color: #212529;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #e0a800;
+}
+
+.btn-info {
+  background: #17a2b8;
+  color: white;
+}
+
+.btn-info:hover:not(:disabled) {
+  background: #117a8b;
+}
+
+/* Main Content */
+.main-content {
   display: flex;
-  justify-content: center;
+  height: calc(100vh - 120px);
 }
 
-.pdf-canvas {
-  width: auto;
-  max-width: 100%;
-  height: auto !important;
-  border: 1px solid #ccc;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.upload-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.upload-message {
+  text-align: center;
+  color: #666;
+}
+
+.upload-message h2 {
+  margin: 0 0 1rem 0;
+  color: #007bff;
+  font-size: 1.8rem;
+}
+
+.upload-message p {
+  margin: 0 0 2rem 0;
+  font-size: 1.1rem;
+}
+
+.upload-icons {
+  font-size: 3rem;
+  margin-top: 2rem;
+  opacity: 0.3;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 300px;
+  background: white;
+  border-right: 1px solid #ddd;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.sidebar h3, .sidebar h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-weight: 600;
+}
+
+.sidebar h4 {
+  font-size: 1.1rem;
+}
+
+.signature-list {
+  margin-bottom: 2rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.signature-item {
+  position: relative;
+  margin-bottom: 0.5rem;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
   background: white;
 }
 
-/* Draggable Images Overlay */
-.images-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* Allow clicking through to PDF */
-  z-index: 10;
-}
-
-.draggable-image {
-  position: absolute;
-  border: 2px dashed transparent;
-  cursor: move;
-  pointer-events: auto; /* Enable interaction with images */
-  user-select: none;
-  touch-action: none;
-  z-index: 20;
-}
-
-.draggable-image:hover,
-.draggable-image.dragging,
-.draggable-image.resizing {
+.signature-item:hover {
   border-color: #007bff;
-  box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+  box-shadow: 0 2px 4px rgba(0,123,255,0.1);
 }
 
-.draggable-image img {
+.signature-thumbnail {
+  width: 100%;
+  height: 60px;
+  object-fit: contain;
+  background: white;
+}
+
+.signature-info {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.signature-info small {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: #dc3545;
+  color: white;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.remove-btn:hover {
+  background: #c82333;
+}
+
+.signature-instructions {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.signature-instructions ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.signature-instructions li {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+/* PDF Viewer Styles */
+.pdf-viewer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: #f8f9fa;
+}
+
+.page-container {
+  margin-bottom: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.page-header {
+  background: #f8f9fa;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #ddd;
+  font-weight: 500;
+  color: #495057;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-info {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+}
+
+.signature-count {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.page-canvas-container {
+  position: relative;
+  margin: 0 auto;
+  background: white;
+}
+
+canvas {
+  display: block;
+  border: 1px solid #ddd;
+}
+
+.placed-signature {
+  position: absolute;
+  cursor: move;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.placed-signature:hover {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+}
+
+.signature-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
   pointer-events: none;
-  user-select: none;
-  -webkit-user-drag: none;
 }
 
-/* Remove button */
-.remove-btn {
+.delete-signature {
   position: absolute;
   top: -8px;
   right: -8px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
-  background-color: #dc3545;
-  color: white;
   border: none;
+  border-radius: 50%;
+  background: #dc3545;
+  color: white;
   font-size: 12px;
-  font-weight: bold;
   cursor: pointer;
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
-  line-height: 1;
-  z-index: 30;
+  transition: all 0.2s;
 }
 
-.remove-btn:hover {
-  background-color: #c82333;
+.placed-signature:hover .delete-signature {
+  display: flex;
 }
 
-/* Resize handle */
+.delete-signature:hover {
+  background: #c82333;
+}
+
+.resize-handles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .resize-handle {
   position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #007bff;
+  border: 1px solid white;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.placed-signature:hover .resize-handle {
+  opacity: 1;
+}
+
+.resize-se {
   bottom: -4px;
   right: -4px;
-  width: 16px;
-  height: 16px;
-  background-color: #007bff;
   cursor: se-resize;
-  z-index: 25;
-  border-radius: 2px;
 }
 
-.resize-handle:after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 6px;
-  height: 6px;
-  border-right: 2px solid white;
-  border-bottom: 2px solid white;
-}
-
-/* Loading & Error states */
-.loading, .error {
+.pdf-footer {
   text-align: center;
-  padding: 20px;
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+  margin-top: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.loading-spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #555;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 10px auto;
+.pdf-footer p {
+  margin: 0;
+  color: #666;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.pdf-footer strong {
+  color: #007bff;
 }
 
-.hidden {
-  display: none;
-}
-
-/* Fixed Bottom Toolbar */
-.signature-toolbar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: #f5f5f5;
-  border-top: 1px solid #ddd;
-  padding: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-  z-index: 100;
-}
-
-/* Buttons */
-.btn {
-  border: 1px solid #ddd;
-  background-color: white;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.btn:hover {
-  background-color: #e9e9e9;
-}
-
-.btn:disabled {
-  background-color: #f5f5f5;
-  color: #999;
-  cursor: not-allowed;
-}
-
-.btn-signature {
-  background-color: #007bff;
-  color: white;
-  border-color: #007bff;
-}
-
-.btn-signature:hover:not(:disabled) {
-  background-color: #0056b3;
-}
-
-.btn-clear {
-  background-color: #dc3545;
-  color: white;
-  border-color: #dc3545;
-}
-
-.btn-clear:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
-/* Mobile toolbar adjustments */
+/* Mobile Responsive */
 @media (max-width: 768px) {
-  .signature-toolbar {
-    padding: 8px;
-    gap: 8px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+  .header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
   }
 
-  .signature-toolbar .btn {
-    min-width: 100px;
-    white-space: nowrap;
+  .controls {
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .btn {
+    font-size: 0.8rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .main-content {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 250px;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .pdf-viewer {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 0.5rem;
     text-align: center;
-    font-size: 14px;
-    padding: 10px 12px;
+  }
+
+  .page-info {
+    justify-content: center;
+  }
+}
+
+/* Loading and Animation States */
+.signature-item {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.placed-signature {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Focus states for accessibility */
+.btn:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.signature-item:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .header,
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    height: auto;
+  }
+
+  .pdf-viewer {
+    padding: 0;
   }
 }
