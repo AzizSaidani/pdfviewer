@@ -1,25 +1,17 @@
 <div class="app-container">
   <header class="header">
-    <h1>PDF Document Signer</h1>
     <div class="controls">
-
-
-      <button (click)="loadTestPDF()" class="btn btn-info">
-        📋 Load Test PDF
+      <button (click)="loadTestPDF()" class="btn btn-info" title="Load Test PDF">
+        📋
       </button>
-
-
-
-      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature">
-        ➕ Add Signature
+      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature" title="Add Signature">
+        ➕
       </button>
-
-      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0">
-        💾 Save PDF
+      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0" title="Save PDF">
+        💾
       </button>
-
-      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0">
-        🗑️ Clear All
+      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0" title="Clear All">
+        🗑️
       </button>
     </div>
   </header>
@@ -27,11 +19,9 @@
   <div class="main-content" *ngIf="!pdfLoaded">
     <div class="upload-area">
       <div class="upload-message">
-        <h2>Upload a PDF to get started</h2>
-        <p>Click "Load PDF" to select your document or "Load Test PDF" to use the sample document</p>
-        <div class="upload-icons">
-          📄 📝 ✏️
-        </div>
+        <h2>Upload a PDF</h2>
+        <p>Tap 📋 to load the sample</p>
+        <div class="upload-icons">📄 ✏️</div>
       </div>
     </div>
   </div>
@@ -40,35 +30,31 @@
     <div class="pdf-viewer" #pdfViewer>
       <div class="page-container" *ngFor="let page of pdfPages; let i = index">
         <div class="page-header">
-          <span>Page {{i + 1}} of {{pdfPages.length}}</span>
-          <div class="page-info">
-            <span class="signature-count" *ngIf="getSignaturesForPage(i + 1).length > 0">
-              {{getSignaturesForPage(i + 1).length}} signature(s)
-            </span>
-          </div>
+          <span>Page {{i + 1}} / {{pdfPages.length}}</span>
+          <span *ngIf="getSignaturesForPage(i + 1).length > 0" class="signature-count">
+            {{getSignaturesForPage(i + 1).length}} ✍️
+          </span>
         </div>
-        <div
-          class="page-canvas-container"
-          [style.width.px]="page.width"
-          [style.height.px]="page.height">
-          <canvas
-            [width]="page.width"
-            [height]="page.height"
-            #pageCanvas></canvas>
 
-          <div
-            *ngFor="let sig of getSignaturesForPage(i + 1)"
-            class="placed-signature"
-            [style.left.px]="sig.x"
-            [style.top.px]="sig.y"
-            [style.width.px]="sig.width"
-            [style.height.px]="sig.height"
-            (mousedown)="startDrag(sig, $event)"
-            [title]="'Signature on page ' + (i + 1)">
+        <div class="page-canvas-container"
+             [style.width.px]="page.width"
+             [style.height.px]="page.height">
+          <canvas [width]="page.width" [height]="page.height" #pageCanvas></canvas>
+
+          <div *ngFor="let sig of getSignaturesForPage(i + 1)"
+               class="placed-signature"
+               [style.left.px]="sig.x"
+               [style.top.px]="sig.y"
+               [style.width.px]="sig.width"
+               [style.height.px]="sig.height"
+               (mousedown)="startDrag(sig, $event)"
+               (touchstart)="startTouchDrag(sig, $event)">
             <img [src]="sig.imageData" alt="Signature" class="signature-image">
-            <button class="delete-signature" (click)="removeSignature(sig.id)" title="Delete signature">×</button>
+            <button class="delete-signature" (click)="removeSignature(sig.id)" title="Delete">×</button>
             <div class="resize-handles">
-              <div class="resize-handle resize-se" (mousedown)="startResize(sig, $event)"></div>
+              <div class="resize-handle resize-se"
+                   (mousedown)="startResize(sig, $event)"
+                   (touchstart)="startTouchResize(sig, $event)"></div>
             </div>
           </div>
         </div>

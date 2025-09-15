@@ -20,8 +20,6 @@ interface SignaturePosition {
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
-  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
-  @ViewChild('signatureInput') signatureInput!: ElementRef<HTMLInputElement>;
   @ViewChild('pdfViewer') pdfViewer!: ElementRef<HTMLDivElement>;
 
   pdfLoaded = false;
@@ -51,7 +49,6 @@ export class AppComponent implements OnInit {
     };
     img.src = 'assets/signature.png';
   }
-
 
   async loadTestPDF() {
     try {
@@ -106,18 +103,16 @@ export class AppComponent implements OnInit {
     }
   }
 
-
   addSignature() {
     if (!this.currentSignature || !this.pdfLoaded) return;
 
-    // Determine the current page based on scroll position
     const viewer = this.pdfViewer.nativeElement;
     const scrollTop = viewer.scrollTop;
     let currentPage = 1;
 
     let cumulativeHeight = 0;
     for (let i = 0; i < this.pdfPages.length; i++) {
-      cumulativeHeight += this.pdfPages[i].height + 120; // Account for margins and headers
+      cumulativeHeight += this.pdfPages[i].height + 120;
       if (scrollTop < cumulativeHeight) {
         currentPage = i + 1;
         break;
@@ -126,7 +121,7 @@ export class AppComponent implements OnInit {
 
     const signature: SignaturePosition = {
       id: Date.now().toString(),
-      x: 50, // Fixed position at top-left
+      x: 50,
       y: 50,
       width: 100,
       height: 50,
@@ -137,6 +132,7 @@ export class AppComponent implements OnInit {
     this.signatures.push(signature);
   }
 
+  /** ---------------- Drag with Mouse ---------------- */
   startDrag(signature: SignaturePosition, event: MouseEvent) {
     event.preventDefault();
     this.draggedSignature = signature;
@@ -156,6 +152,61 @@ export class AppComponent implements OnInit {
     document.addEventListener('mouseup', mouseUpHandler);
   }
 
+  onMouseMove(event: MouseEvent) {
+    if (!this.draggedSignature) return;
+
+    const pageContainer = document.querySelector(
+      `[style*="width: ${this.pdfPages[this.draggedSignature.page - 1].width}px"]`
+    ) as HTMLElement;
+    if (!pageContainer) return;
+
+    const rect = pageContainer.getBoundingClientRect();
+    const newX = event.clientX - rect.left - this.dragOffset.x;
+    const newY = event.clientY - rect.top - this.dragOffset.y;
+
+    this.draggedSignature.x = Math.max(0, Math.min(newX, this.pdfPages[this.draggedSignature.page - 1].width - this.draggedSignature.width));
+    this.draggedSignature.y = Math.max(0, Math.min(newY, this.pdfPages[this.draggedSignature.page - 1].height - this.draggedSignature.height));
+  }
+
+  /** ---------------- Drag with Touch ---------------- */
+  startTouchDrag(signature: SignaturePosition, event: TouchEvent) {
+    event.preventDefault();
+    this.draggedSignature = signature;
+
+    const touch = event.touches[0];
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.dragOffset.x = touch.clientX - rect.left;
+    this.dragOffset.y = touch.clientY - rect.top;
+
+    const touchMoveHandler = (e: TouchEvent) => this.onTouchMove(e);
+    const touchEndHandler = () => {
+      document.removeEventListener('touchmove', touchMoveHandler);
+      document.removeEventListener('touchend', touchEndHandler);
+      this.draggedSignature = null;
+    };
+
+    document.addEventListener('touchmove', touchMoveHandler);
+    document.addEventListener('touchend', touchEndHandler);
+  }
+
+  onTouchMove(event: TouchEvent) {
+    if (!this.draggedSignature) return;
+    const touch = event.touches[0];
+
+    const pageContainer = document.querySelector(
+      `[style*="width: ${this.pdfPages[this.draggedSignature.page - 1].width}px"]`
+    ) as HTMLElement;
+    if (!pageContainer) return;
+
+    const rect = pageContainer.getBoundingClientRect();
+    const newX = touch.clientX - rect.left - this.dragOffset.x;
+    const newY = touch.clientY - rect.top - this.dragOffset.y;
+
+    this.draggedSignature.x = Math.max(0, Math.min(newX, this.pdfPages[this.draggedSignature.page - 1].width - this.draggedSignature.width));
+    this.draggedSignature.y = Math.max(0, Math.min(newY, this.pdfPages[this.draggedSignature.page - 1].height - this.draggedSignature.height));
+  }
+
+  /** ---------------- Resize with Mouse ---------------- */
   startResize(signature: SignaturePosition, event: MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
@@ -176,24 +227,12 @@ export class AppComponent implements OnInit {
     document.addEventListener('mouseup', mouseUpHandler);
   }
 
-  onMouseMove(event: MouseEvent) {
-    if (!this.draggedSignature) return;
-
-    const pageContainer = document.querySelector(`[style*="width: ${this.pdfPages[this.draggedSignature.page - 1].width}px"]`) as HTMLElement;
-    if (!pageContainer) return;
-
-    const rect = pageContainer.getBoundingClientRect();
-    const newX = event.clientX - rect.left - this.dragOffset.x;
-    const newY = event.clientY - rect.top - this.dragOffset.y;
-
-    this.draggedSignature.x = Math.max(0, Math.min(newX, this.pdfPages[this.draggedSignature.page - 1].width - this.draggedSignature.width));
-    this.draggedSignature.y = Math.max(0, Math.min(newY, this.pdfPages[this.draggedSignature.page - 1].height - this.draggedSignature.height));
-  }
-
   onResizeMove(event: MouseEvent) {
     if (!this.resizingSignature) return;
 
-    const pageContainer = document.querySelector(`[style*="width: ${this.pdfPages[this.resizingSignature.page - 1].width}px"]`) as HTMLElement;
+    const pageContainer = document.querySelector(
+      `[style*="width: ${this.pdfPages[this.resizingSignature.page - 1].width}px"]`
+    ) as HTMLElement;
     if (!pageContainer) return;
 
     const rect = pageContainer.getBoundingClientRect();
@@ -204,15 +243,47 @@ export class AppComponent implements OnInit {
     this.resizingSignature.height = Math.min(newHeight, this.pdfPages[this.resizingSignature.page - 1].height - this.resizingSignature.y);
   }
 
-  getSignaturesForPage(pageNumber: number): SignaturePosition[] {
-    return this.signatures.filter(sig => sig.page === pageNumber);
+  /** ---------------- Resize with Touch ---------------- */
+  startTouchResize(signature: SignaturePosition, event: TouchEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resizingSignature = signature;
+
+    const touch = event.touches[0];
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.resizeOffset.x = touch.clientX - rect.left;
+    this.resizeOffset.y = touch.clientY - rect.top;
+
+    const touchMoveHandler = (e: TouchEvent) => this.onTouchResizeMove(e);
+    const touchEndHandler = () => {
+      document.removeEventListener('touchmove', touchMoveHandler);
+      document.removeEventListener('touchend', touchEndHandler);
+      this.resizingSignature = null;
+    };
+
+    document.addEventListener('touchmove', touchMoveHandler);
+    document.addEventListener('touchend', touchEndHandler);
   }
 
-  selectSignature(id: string) {
-    const signature = this.signatures.find(sig => sig.id === id);
-    if (signature) {
-      this.currentSignature = signature.imageData;
-    }
+  onTouchResizeMove(event: TouchEvent) {
+    if (!this.resizingSignature) return;
+    const touch = event.touches[0];
+
+    const pageContainer = document.querySelector(
+      `[style*="width: ${this.pdfPages[this.resizingSignature.page - 1].width}px"]`
+    ) as HTMLElement;
+    if (!pageContainer) return;
+
+    const rect = pageContainer.getBoundingClientRect();
+    const newWidth = Math.max(50, touch.clientX - rect.left - this.resizingSignature.x);
+    const newHeight = Math.max(25, touch.clientY - rect.top - this.resizingSignature.y);
+
+    this.resizingSignature.width = Math.min(newWidth, this.pdfPages[this.resizingSignature.page - 1].width - this.resizingSignature.x);
+    this.resizingSignature.height = Math.min(newHeight, this.pdfPages[this.resizingSignature.page - 1].height - this.resizingSignature.y);
+  }
+
+  getSignaturesForPage(pageNumber: number): SignaturePosition[] {
+    return this.signatures.filter(sig => sig.page === pageNumber);
   }
 
   removeSignature(id: string) {
@@ -221,10 +292,6 @@ export class AppComponent implements OnInit {
 
   clearSignatures() {
     this.signatures = [];
-  }
-
-  trackSignature(index: number, signature: SignaturePosition): string {
-    return signature.id;
   }
 
   private dataURLToBytes(dataURL: string): Uint8Array {
@@ -255,40 +322,34 @@ export class AppComponent implements OnInit {
 
       for (const [pageNum, pageSignatures] of signaturesByPage) {
         const page = pdfDoc.getPage(pageNum - 1);
-        const { width: pdfWidth, height: pdfHeight } = page.getSize();
+        const { height: pdfHeight } = page.getSize();
         const pageScale = this.pdfPages[pageNum - 1].scale;
 
         for (const sig of pageSignatures) {
-          try {
-            const imageBytes = this.dataURLToBytes(sig.imageData);
-            let image;
-            if (sig.imageData.includes('data:image/png')) {
-              image = await pdfDoc.embedPng(imageBytes);
-            } else {
-              image = await pdfDoc.embedJpg(imageBytes);
-            }
-
-            const scaledX = sig.x / pageScale;
-            const scaledY = sig.y / pageScale;
-            const scaledWidth = sig.width / pageScale;
-            const scaledHeight = sig.height / pageScale;
-
-            const pdfY = pdfHeight - scaledY - scaledHeight;
-
-            page.drawImage(image, {
-              x: scaledX,
-              y: pdfY,
-              width: scaledWidth,
-              height: scaledHeight
-            });
-          } catch (error) {
-            console.error('Error adding signature to page:', error);
+          const imageBytes = this.dataURLToBytes(sig.imageData);
+          let image;
+          if (sig.imageData.includes('data:image/png')) {
+            image = await pdfDoc.embedPng(imageBytes);
+          } else {
+            image = await pdfDoc.embedJpg(imageBytes);
           }
+
+          const scaledX = sig.x / pageScale;
+          const scaledY = sig.y / pageScale;
+          const scaledWidth = sig.width / pageScale;
+          const scaledHeight = sig.height / pageScale;
+          const pdfY = pdfHeight - scaledY - scaledHeight;
+
+          page.drawImage(image, {
+            x: scaledX,
+            y: pdfY,
+            width: scaledWidth,
+            height: scaledHeight
+          });
         }
       }
 
       const pdfBytes = await pdfDoc.save();
-
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
