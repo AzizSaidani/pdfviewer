@@ -33,12 +33,12 @@
              [style.height.px]="page.height">
           <canvas [width]="page.width" [height]="page.height"></canvas>
 
-          <div *ngFor="let sig of getSignaturesForPage(i + 1); let displayCoords = getSignatureDisplayCoords(sig)"
+          <div *ngFor="let sig of getSignaturesForPage(i + 1)"
                class="placed-signature"
-               [style.left.px]="displayCoords.left"
-               [style.top.px]="displayCoords.top"
-               [style.width.px]="displayCoords.width"
-               [style.height.px]="displayCoords.height"
+               [style.left.px]="getSignatureDisplayCoords(sig).left"
+               [style.top.px]="getSignatureDisplayCoords(sig).top"
+               [style.width.px]="getSignatureDisplayCoords(sig).width"
+               [style.height.px]="getSignatureDisplayCoords(sig).height"
                (mousedown)="startDrag(sig, $event)"
                (touchstart)="startDrag(sig, $event)"
                style="touch-action: none;">
