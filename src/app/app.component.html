@@ -1,18 +1,10 @@
 <div class="app-container">
   <header class="header">
     <div class="controls">
-      <button (click)="loadTestPDF()" class="btn btn-info" title="Load Test PDF">
-        📋
-      </button>
-      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature" title="Add Signature">
-        ➕
-      </button>
-      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0" title="Save PDF">
-        💾
-      </button>
-      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0" title="Clear All">
-        🗑️
-      </button>
+      <button (click)="loadTestPDF()" class="btn btn-info" title="Load Test PDF">📋</button>
+      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature" title="Add Signature">➕</button>
+      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0" title="Save PDF">💾</button>
+      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0" title="Clear All">🗑️</button>
     </div>
   </header>
 
@@ -30,13 +22,16 @@
     <div class="pdf-viewer" #pdfViewer>
       <div class="page-container" *ngFor="let page of pdfPages; let i = index">
         <div class="page-header">
-          <span>Page {{i + 1}} / {{pdfPages.length}}</span>
+          <span>Page {{ i + 1 }} / {{ pdfPages.length }}</span>
+          <span *ngIf="getSignaturesForPage(i + 1).length > 0" class="signature-count">
+            {{ getSignaturesForPage(i + 1).length }} ✍️
+          </span>
         </div>
 
         <div class="page-canvas-container"
              [style.width.px]="page.width"
-             >
-          <canvas [width]="page.width" [height]="page.height" #pageCanvas></canvas>
+             [style.height.px]="page.height">
+          <canvas [width]="page.width" [height]="page.height"></canvas>
 
           <div *ngFor="let sig of getSignaturesForPage(i + 1)"
                class="placed-signature"
@@ -45,17 +40,20 @@
                [style.width.px]="sig.width"
                [style.height.px]="sig.height"
                (mousedown)="startDrag(sig, $event)"
-               (touchstart)="startTouchDrag(sig, $event)">
+               (touchstart)="startDrag(sig, $event)"
+               style="touch-action: none;">
             <img [src]="sig.imageData" alt="Signature" class="signature-image">
             <button class="delete-signature" (click)="removeSignature(sig.id)" title="Delete">×</button>
             <div class="resize-handles">
               <div class="resize-handle resize-se"
                    (mousedown)="startResize(sig, $event)"
-                   (touchstart)="startTouchResize(sig, $event)"></div>
+                   (touchstart)="startResize(sig, $event)"
+                   style="touch-action: none;"></div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+
 </div>

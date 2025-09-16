@@ -4,7 +4,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 interface SignaturePosition {
   id: string;
-  x: number;
+  x: number; // PDF coordinates
   y: number;
   width: number;
   height: number;
@@ -24,16 +24,18 @@ export class AppComponent implements OnInit {
 
   pdfLoaded = false;
   pdfDocument: any = null;
-  pdfPages: Array<{width: number, height: number, scale: number, canvas?: HTMLCanvasElement}> = [];
+  pdfPages: Array<{ width: number; height: number; scale: number; canvas?: HTMLCanvasElement }> = [];
   signatures: SignaturePosition[] = [];
   currentSignature: string | null = null;
+
   draggedSignature: SignaturePosition | null = null;
   resizingSignature: SignaturePosition | null = null;
   dragOffset = { x: 0, y: 0 };
   resizeOffset = { x: 0, y: 0 };
 
   ngOnInit() {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     this.loadDefaultSignature();
   }
 
@@ -71,12 +73,7 @@ export class AppComponent implements OnInit {
     for (let i = 1; i <= this.pdfDocument.numPages; i++) {
       const page = await this.pdfDocument.getPage(i);
       const viewport = page.getViewport({ scale });
-
-      this.pdfPages.push({
-        width: viewport.width,
-        height: viewport.height,
-        scale
-      });
+      this.pdfPages.push({ width: viewport.width, height: viewport.height, scale });
     }
 
     setTimeout(() => this.renderAllPages(), 100);
@@ -84,21 +81,14 @@ export class AppComponent implements OnInit {
 
   async renderAllPages() {
     const canvases = document.querySelectorAll('canvas');
-
     for (let i = 0; i < this.pdfDocument.numPages; i++) {
       const page = await this.pdfDocument.getPage(i + 1);
       const canvas = canvases[i] as HTMLCanvasElement;
       const context = canvas.getContext('2d')!;
       const viewport = page.getViewport({ scale: this.pdfPages[i].scale });
-
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-
-      await page.render({
-        canvasContext: context,
-        viewport: viewport
-      }).promise;
-
+      await page.render({ canvasContext: context, viewport }).promise;
       this.pdfPages[i].canvas = canvas;
     }
   }
@@ -109,7 +99,6 @@ export class AppComponent implements OnInit {
     const viewer = this.pdfViewer.nativeElement;
     const scrollTop = viewer.scrollTop;
     let currentPage = 1;
-
     let cumulativeHeight = 0;
     for (let i = 0; i < this.pdfPages.length; i++) {
       cumulativeHeight += this.pdfPages[i].height + 120;
@@ -132,157 +121,136 @@ export class AppComponent implements OnInit {
     this.signatures.push(signature);
   }
 
-  /** ---------------- Drag with Mouse ---------------- */
-  startDrag(signature: SignaturePosition, event: MouseEvent) {
+  /** ---------------- DRAG / TOUCH ---------------- */
+  startDrag(signature: SignaturePosition, event: MouseEvent | TouchEvent) {
     event.preventDefault();
     this.draggedSignature = signature;
 
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    this.dragOffset.x = event.clientX - rect.left;
-    this.dragOffset.y = event.clientY - rect.top;
+    let clientX = 0,
+      clientY = 0;
+    if (event instanceof MouseEvent) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    }
 
-    const mouseMoveHandler = (e: MouseEvent) => this.onMouseMove(e);
-    const mouseUpHandler = () => {
-      document.removeEventListener('mousemove', mouseMoveHandler);
-      document.removeEventListener('mouseup', mouseUpHandler);
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.dragOffset.x = clientX - rect.left;
+    this.dragOffset.y = clientY - rect.top;
+
+    const moveHandler = (e: MouseEvent | TouchEvent) => this.onDragMove(e);
+    const endHandler = () => {
+      document.removeEventListener('mousemove', moveHandler as any);
+      document.removeEventListener('mouseup', endHandler);
+      document.removeEventListener('touchmove', moveHandler as any);
+      document.removeEventListener('touchend', endHandler);
       this.draggedSignature = null;
     };
 
-    document.addEventListener('mousemove', mouseMoveHandler);
-    document.addEventListener('mouseup', mouseUpHandler);
+    document.addEventListener('mousemove', moveHandler as any);
+    document.addEventListener('mouseup', endHandler);
+    document.addEventListener('touchmove', moveHandler as any, { passive: false });
+    document.addEventListener('touchend', endHandler);
   }
 
-  onMouseMove(event: MouseEvent) {
+  onDragMove(event: MouseEvent | TouchEvent) {
     if (!this.draggedSignature) return;
 
+    let clientX = 0,
+      clientY = 0;
+    if (event instanceof MouseEvent) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    }
+
+    const pageIndex = this.draggedSignature.page - 1;
     const pageContainer = document.querySelector(
-      `[style*="width: ${this.pdfPages[this.draggedSignature.page - 1].width}px"]`
+      `[style*="width: ${this.pdfPages[pageIndex].width}px"]`
     ) as HTMLElement;
     if (!pageContainer) return;
 
     const rect = pageContainer.getBoundingClientRect();
-    const newX = event.clientX - rect.left - this.dragOffset.x;
-    const newY = event.clientY - rect.top - this.dragOffset.y;
+    const scaleX = pageContainer.offsetWidth / this.pdfPages[pageIndex].width;
+    const scaleY = pageContainer.offsetHeight / this.pdfPages[pageIndex].height;
 
-    this.draggedSignature.x = Math.max(0, Math.min(newX, this.pdfPages[this.draggedSignature.page - 1].width - this.draggedSignature.width));
-    this.draggedSignature.y = Math.max(0, Math.min(newY, this.pdfPages[this.draggedSignature.page - 1].height - this.draggedSignature.height));
+    const newX = (clientX - rect.left - this.dragOffset.x) / scaleX;
+    const newY = (clientY - rect.top - this.dragOffset.y) / scaleY;
+
+    this.draggedSignature.x = Math.max(0, Math.min(newX, this.pdfPages[pageIndex].width - this.draggedSignature.width));
+    this.draggedSignature.y = Math.max(0, Math.min(newY, this.pdfPages[pageIndex].height - this.draggedSignature.height));
   }
 
-  /** ---------------- Drag with Touch ---------------- */
-  startTouchDrag(signature: SignaturePosition, event: TouchEvent) {
-    event.preventDefault();
-    this.draggedSignature = signature;
-
-    const touch = event.touches[0];
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    this.dragOffset.x = touch.clientX - rect.left;
-    this.dragOffset.y = touch.clientY - rect.top;
-
-    const touchMoveHandler = (e: TouchEvent) => this.onTouchMove(e);
-    const touchEndHandler = () => {
-      document.removeEventListener('touchmove', touchMoveHandler);
-      document.removeEventListener('touchend', touchEndHandler);
-      this.draggedSignature = null;
-    };
-
-    document.addEventListener('touchmove', touchMoveHandler);
-    document.addEventListener('touchend', touchEndHandler);
-  }
-
-  onTouchMove(event: TouchEvent) {
-    if (!this.draggedSignature) return;
-    const touch = event.touches[0];
-
-    const pageContainer = document.querySelector(
-      `[style*="width: ${this.pdfPages[this.draggedSignature.page - 1].width}px"]`
-    ) as HTMLElement;
-    if (!pageContainer) return;
-
-    const rect = pageContainer.getBoundingClientRect();
-    const newX = touch.clientX - rect.left - this.dragOffset.x;
-    const newY = touch.clientY - rect.top - this.dragOffset.y;
-
-    this.draggedSignature.x = Math.max(0, Math.min(newX, this.pdfPages[this.draggedSignature.page - 1].width - this.draggedSignature.width));
-    this.draggedSignature.y = Math.max(0, Math.min(newY, this.pdfPages[this.draggedSignature.page - 1].height - this.draggedSignature.height));
-  }
-
-  /** ---------------- Resize with Mouse ---------------- */
-  startResize(signature: SignaturePosition, event: MouseEvent) {
+  /** ---------------- RESIZE / TOUCH ---------------- */
+  startResize(signature: SignaturePosition, event: MouseEvent | TouchEvent) {
     event.preventDefault();
     event.stopPropagation();
     this.resizingSignature = signature;
 
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    this.resizeOffset.x = event.clientX - rect.left;
-    this.resizeOffset.y = event.clientY - rect.top;
+    let clientX = 0,
+      clientY = 0;
+    if (event instanceof MouseEvent) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    }
 
-    const mouseMoveHandler = (e: MouseEvent) => this.onResizeMove(e);
-    const mouseUpHandler = () => {
-      document.removeEventListener('mousemove', mouseMoveHandler);
-      document.removeEventListener('mouseup', mouseUpHandler);
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    this.resizeOffset.x = clientX - rect.left;
+    this.resizeOffset.y = clientY - rect.top;
+
+    const moveHandler = (e: MouseEvent | TouchEvent) => this.onResizeMove(e);
+    const endHandler = () => {
+      document.removeEventListener('mousemove', moveHandler as any);
+      document.removeEventListener('mouseup', endHandler);
+      document.removeEventListener('touchmove', moveHandler as any);
+      document.removeEventListener('touchend', endHandler);
       this.resizingSignature = null;
     };
 
-    document.addEventListener('mousemove', mouseMoveHandler);
-    document.addEventListener('mouseup', mouseUpHandler);
+    document.addEventListener('mousemove', moveHandler as any);
+    document.addEventListener('mouseup', endHandler);
+    document.addEventListener('touchmove', moveHandler as any, { passive: false });
+    document.addEventListener('touchend', endHandler);
   }
 
-  onResizeMove(event: MouseEvent) {
+  onResizeMove(event: MouseEvent | TouchEvent) {
     if (!this.resizingSignature) return;
 
+    let clientX = 0,
+      clientY = 0;
+    if (event instanceof MouseEvent) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else {
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    }
+
+    const pageIndex = this.resizingSignature.page - 1;
     const pageContainer = document.querySelector(
-      `[style*="width: ${this.pdfPages[this.resizingSignature.page - 1].width}px"]`
+      `[style*="width: ${this.pdfPages[pageIndex].width}px"]`
     ) as HTMLElement;
     if (!pageContainer) return;
 
     const rect = pageContainer.getBoundingClientRect();
-    const newWidth = Math.max(50, event.clientX - rect.left - this.resizingSignature.x);
-    const newHeight = Math.max(25, event.clientY - rect.top - this.resizingSignature.y);
+    const scaleX = pageContainer.offsetWidth / this.pdfPages[pageIndex].width;
+    const scaleY = pageContainer.offsetHeight / this.pdfPages[pageIndex].height;
 
-    this.resizingSignature.width = Math.min(newWidth, this.pdfPages[this.resizingSignature.page - 1].width - this.resizingSignature.x);
-    this.resizingSignature.height = Math.min(newHeight, this.pdfPages[this.resizingSignature.page - 1].height - this.resizingSignature.y);
+    const newWidth = Math.max(50, (clientX - rect.left - this.resizingSignature.x) / scaleX);
+    const newHeight = Math.max(25, (clientY - rect.top - this.resizingSignature.y) / scaleY);
+
+    this.resizingSignature.width = Math.min(newWidth, this.pdfPages[pageIndex].width - this.resizingSignature.x);
+    this.resizingSignature.height = Math.min(newHeight, this.pdfPages[pageIndex].height - this.resizingSignature.y);
   }
 
-  /** ---------------- Resize with Touch ---------------- */
-  startTouchResize(signature: SignaturePosition, event: TouchEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    this.resizingSignature = signature;
-
-    const touch = event.touches[0];
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    this.resizeOffset.x = touch.clientX - rect.left;
-    this.resizeOffset.y = touch.clientY - rect.top;
-
-    const touchMoveHandler = (e: TouchEvent) => this.onTouchResizeMove(e);
-    const touchEndHandler = () => {
-      document.removeEventListener('touchmove', touchMoveHandler);
-      document.removeEventListener('touchend', touchEndHandler);
-      this.resizingSignature = null;
-    };
-
-    document.addEventListener('touchmove', touchMoveHandler);
-    document.addEventListener('touchend', touchEndHandler);
-  }
-
-  onTouchResizeMove(event: TouchEvent) {
-    if (!this.resizingSignature) return;
-    const touch = event.touches[0];
-
-    const pageContainer = document.querySelector(
-      `[style*="width: ${this.pdfPages[this.resizingSignature.page - 1].width}px"]`
-    ) as HTMLElement;
-    if (!pageContainer) return;
-
-    const rect = pageContainer.getBoundingClientRect();
-    const newWidth = Math.max(50, touch.clientX - rect.left - this.resizingSignature.x);
-    const newHeight = Math.max(25, touch.clientY - rect.top - this.resizingSignature.y);
-
-    this.resizingSignature.width = Math.min(newWidth, this.pdfPages[this.resizingSignature.page - 1].width - this.resizingSignature.x);
-    this.resizingSignature.height = Math.min(newHeight, this.pdfPages[this.resizingSignature.page - 1].height - this.resizingSignature.y);
-  }
-
-  getSignaturesForPage(pageNumber: number): SignaturePosition[] {
+  getSignaturesForPage(pageNumber: number) {
     return this.signatures.filter(sig => sig.page === pageNumber);
   }
 
@@ -298,9 +266,7 @@ export class AppComponent implements OnInit {
     const base64 = dataURL.split(',')[1];
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     return bytes;
   }
 
@@ -314,38 +280,37 @@ export class AppComponent implements OnInit {
 
       const signaturesByPage = new Map<number, SignaturePosition[]>();
       this.signatures.forEach(sig => {
-        if (!signaturesByPage.has(sig.page)) {
-          signaturesByPage.set(sig.page, []);
-        }
+        if (!signaturesByPage.has(sig.page)) signaturesByPage.set(sig.page, []);
         signaturesByPage.get(sig.page)!.push(sig);
       });
 
       for (const [pageNum, pageSignatures] of signaturesByPage) {
         const page = pdfDoc.getPage(pageNum - 1);
-        const { height: pdfHeight } = page.getSize();
+        const { width: pdfWidth, height: pdfHeight } = page.getSize();
         const pageScale = this.pdfPages[pageNum - 1].scale;
 
         for (const sig of pageSignatures) {
-          const imageBytes = this.dataURLToBytes(sig.imageData);
-          let image;
-          if (sig.imageData.includes('data:image/png')) {
-            image = await pdfDoc.embedPng(imageBytes);
-          } else {
-            image = await pdfDoc.embedJpg(imageBytes);
+          try {
+            const imageBytes = this.dataURLToBytes(sig.imageData);
+            const image = sig.imageData.includes('data:image/png')
+              ? await pdfDoc.embedPng(imageBytes)
+              : await pdfDoc.embedJpg(imageBytes);
+
+            const scaledX = sig.x / pageScale;
+            const scaledY = sig.y / pageScale;
+            const scaledWidth = sig.width / pageScale;
+            const scaledHeight = sig.height / pageScale;
+            const pdfY = pdfHeight - scaledY - scaledHeight;
+
+            page.drawImage(image, {
+              x: scaledX,
+              y: pdfY,
+              width: scaledWidth,
+              height: scaledHeight
+            });
+          } catch (error) {
+            console.error('Error adding signature to page:', error);
           }
-
-          const scaledX = sig.x / pageScale;
-          const scaledY = sig.y / pageScale;
-          const scaledWidth = sig.width / pageScale;
-          const scaledHeight = sig.height / pageScale;
-          const pdfY = pdfHeight - scaledY - scaledHeight;
-
-          page.drawImage(image, {
-            x: scaledX,
-            y: pdfY,
-            width: scaledWidth,
-            height: scaledHeight
-          });
         }
       }
 
@@ -359,10 +324,10 @@ export class AppComponent implements OnInit {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
     } catch (error) {
       console.error('Error saving PDF:', error);
       alert('Error saving PDF. Please try again.');
     }
   }
 }
+
