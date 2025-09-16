@@ -29,8 +29,6 @@ export class AppComponent implements OnInit {
     height: number; // Original PDF height
     scale: number;
     canvas?: HTMLCanvasElement;
-    actualWidth?: number; // Rendered width on screen
-    actualHeight?: number; // Rendered height on screen
   }> = [];
   signatures: SignaturePosition[] = [];
   currentSignature: string | null = null;
@@ -101,10 +99,6 @@ export class AppComponent implements OnInit {
       canvas.width = viewport.width;
       canvas.height = viewport.height;
 
-      // Store actual rendered dimensions
-      this.pdfPages[i].actualWidth = canvas.offsetWidth;
-      this.pdfPages[i].actualHeight = canvas.offsetHeight;
-
       await page.render({ canvasContext: context, viewport }).promise;
       this.pdfPages[i].canvas = canvas;
     }
@@ -113,15 +107,15 @@ export class AppComponent implements OnInit {
   // Get the scale factors for a page
   private getPageScaleFactors(pageIndex: number): { scaleX: number; scaleY: number } {
     const pageData = this.pdfPages[pageIndex];
-    const canvas = pageData.canvas;
+    const pageContainer = this.getPageContainer(pageIndex);
 
-    if (!canvas) {
+    if (!pageContainer) {
       return { scaleX: 1, scaleY: 1 };
     }
 
-    // Calculate the actual scale based on rendered size vs original size
-    const scaleX = canvas.offsetWidth / pageData.width;
-    const scaleY = canvas.offsetHeight / pageData.height;
+    // Calculate the actual scale based on container size vs original PDF size
+    const scaleX = pageContainer.offsetWidth / pageData.width;
+    const scaleY = pageContainer.offsetHeight / pageData.height;
 
     return { scaleX, scaleY };
   }
@@ -153,8 +147,9 @@ export class AppComponent implements OnInit {
     let cumulativeHeight = 0;
 
     for (let i = 0; i < this.pdfPages.length; i++) {
-      const { actualHeight } = this.pdfPages[i];
-      cumulativeHeight += (actualHeight || this.pdfPages[i].height) + 120;
+      const pageContainer = this.getPageContainer(i);
+      const pageHeight = pageContainer ? pageContainer.offsetHeight : this.pdfPages[i].height;
+      cumulativeHeight += pageHeight + 120;
       if (scrollTop < cumulativeHeight) {
         currentPage = i + 1;
         break;
@@ -303,24 +298,30 @@ export class AppComponent implements OnInit {
     if (!pageContainer) return;
 
     const rect = pageContainer.getBoundingClientRect();
+    const { scaleX, scaleY } = this.getPageScaleFactors(pageIndex);
 
-    // Calculate screen coordinates
-    const screenWidth = clientX - rect.left - this.resizingSignature.x * this.getPageScaleFactors(pageIndex).scaleX;
-    const screenHeight = clientY - rect.top - this.resizingSignature.y * this.getPageScaleFactors(pageIndex).scaleY;
+    // Calculate screen coordinates relative to signature position
+    const signatureScreenX = this.resizingSignature.x * scaleX;
+    const signatureScreenY = this.resizingSignature.y * scaleY;
+
+    const screenWidth = clientX - rect.left - signatureScreenX;
+    const screenHeight = clientY - rect.top - signatureScreenY;
 
     // Convert to PDF coordinates
-    const pdfSize = this.screenToPdfCoords(screenWidth, screenHeight, pageIndex);
+    const pdfWidth = screenWidth / scaleX;
+    const pdfHeight = screenHeight / scaleY;
 
     // Apply bounds checking in PDF space
-    const newWidth = Math.max(50, pdfSize.x);
-    const newHeight = Math.max(25, pdfSize.y);
+    const newWidth = Math.max(50, pdfWidth);
+    const newHeight = Math.max(25, pdfHeight);
 
     this.resizingSignature.width = Math.min(newWidth, this.pdfPages[pageIndex].width - this.resizingSignature.x);
     this.resizingSignature.height = Math.min(newHeight, this.pdfPages[pageIndex].height - this.resizingSignature.y);
   }
 
   private getPageContainer(pageIndex: number): HTMLElement | null {
-    return document.querySelector(`.page-canvas-container:nth-child(${pageIndex + 2})`) as HTMLElement;
+    const pageContainers = document.querySelectorAll('.page-canvas-container');
+    return pageContainers[pageIndex] as HTMLElement || null;
   }
 
   getSignaturesForPage(pageNumber: number) {
