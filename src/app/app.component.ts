@@ -4,10 +4,10 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 interface SignaturePosition {
   id: string;
-  x: number; // Always store in actual PDF coordinates (not scaled)
-  y: number; // Always store in actual PDF coordinates (not scaled)
-  width: number; // Always store in actual PDF coordinates (not scaled)
-  height: number; // Always store in actual PDF coordinates (not scaled)
+  x: number; // PDF coordinates
+  y: number;
+  width: number;
+  height: number;
   page: number;
   imageData: string;
 }
@@ -24,12 +24,7 @@ export class AppComponent implements OnInit {
 
   pdfLoaded = false;
   pdfDocument: any = null;
-  pdfPages: Array<{
-    width: number; // Original PDF width
-    height: number; // Original PDF height
-    scale: number;
-    canvas?: HTMLCanvasElement;
-  }> = [];
+  pdfPages: Array<{ width: number; height: number; scale: number; canvas?: HTMLCanvasElement }> = [];
   signatures: SignaturePosition[] = [];
   currentSignature: string | null = null;
 
@@ -78,11 +73,7 @@ export class AppComponent implements OnInit {
     for (let i = 1; i <= this.pdfDocument.numPages; i++) {
       const page = await this.pdfDocument.getPage(i);
       const viewport = page.getViewport({ scale });
-      this.pdfPages.push({
-        width: viewport.width,
-        height: viewport.height,
-        scale
-      });
+      this.pdfPages.push({ width: viewport.width, height: viewport.height, scale });
     }
 
     setTimeout(() => this.renderAllPages(), 100);
@@ -95,47 +86,11 @@ export class AppComponent implements OnInit {
       const canvas = canvases[i] as HTMLCanvasElement;
       const context = canvas.getContext('2d')!;
       const viewport = page.getViewport({ scale: this.pdfPages[i].scale });
-
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-
       await page.render({ canvasContext: context, viewport }).promise;
       this.pdfPages[i].canvas = canvas;
     }
-  }
-
-  // Get the scale factors for a page
-  private getPageScaleFactors(pageIndex: number): { scaleX: number; scaleY: number } {
-    const pageData = this.pdfPages[pageIndex];
-    const pageContainer = this.getPageContainer(pageIndex);
-
-    if (!pageContainer) {
-      return { scaleX: 1, scaleY: 1 };
-    }
-
-    // Calculate the actual scale based on container size vs original PDF size
-    const scaleX = pageContainer.offsetWidth / pageData.width;
-    const scaleY = pageContainer.offsetHeight / pageData.height;
-
-    return { scaleX, scaleY };
-  }
-
-  // Convert screen coordinates to PDF coordinates
-  private screenToPdfCoords(screenX: number, screenY: number, pageIndex: number): { x: number; y: number } {
-    const { scaleX, scaleY } = this.getPageScaleFactors(pageIndex);
-    return {
-      x: screenX / scaleX,
-      y: screenY / scaleY
-    };
-  }
-
-  // Convert PDF coordinates to screen coordinates
-  private pdfToScreenCoords(pdfX: number, pdfY: number, pageIndex: number): { x: number; y: number } {
-    const { scaleX, scaleY } = this.getPageScaleFactors(pageIndex);
-    return {
-      x: pdfX * scaleX,
-      y: pdfY * scaleY
-    };
   }
 
   addSignature() {
@@ -145,24 +100,20 @@ export class AppComponent implements OnInit {
     const scrollTop = viewer.scrollTop;
     let currentPage = 1;
     let cumulativeHeight = 0;
-
     for (let i = 0; i < this.pdfPages.length; i++) {
-      const pageContainer = this.getPageContainer(i);
-      const pageHeight = pageContainer ? pageContainer.offsetHeight : this.pdfPages[i].height;
-      cumulativeHeight += pageHeight + 120;
+      cumulativeHeight += this.pdfPages[i].height + 120;
       if (scrollTop < cumulativeHeight) {
         currentPage = i + 1;
         break;
       }
     }
 
-    // Store coordinates in PDF space (not screen space)
     const signature: SignaturePosition = {
       id: Date.now().toString(),
-      x: 50, // PDF coordinates
-      y: 50, // PDF coordinates
-      width: 100, // PDF coordinates
-      height: 50, // PDF coordinates
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 50,
       page: currentPage,
       imageData: this.currentSignature
     };
@@ -170,26 +121,13 @@ export class AppComponent implements OnInit {
     this.signatures.push(signature);
   }
 
-  // Get display coordinates for a signature
-  getSignatureDisplayCoords(signature: SignaturePosition) {
-    const pageIndex = signature.page - 1;
-    const screenCoords = this.pdfToScreenCoords(signature.x, signature.y, pageIndex);
-    const screenSize = this.pdfToScreenCoords(signature.width, signature.height, pageIndex);
-
-    return {
-      left: screenCoords.x,
-      top: screenCoords.y,
-      width: screenSize.x,
-      height: screenSize.y
-    };
-  }
-
   /** ---------------- DRAG / TOUCH ---------------- */
   startDrag(signature: SignaturePosition, event: MouseEvent | TouchEvent) {
     event.preventDefault();
     this.draggedSignature = signature;
 
-    let clientX = 0, clientY = 0;
+    let clientX = 0,
+      clientY = 0;
     if (event instanceof MouseEvent) {
       clientX = event.clientX;
       clientY = event.clientY;
@@ -220,7 +158,8 @@ export class AppComponent implements OnInit {
   onDragMove(event: MouseEvent | TouchEvent) {
     if (!this.draggedSignature) return;
 
-    let clientX = 0, clientY = 0;
+    let clientX = 0,
+      clientY = 0;
     if (event instanceof MouseEvent) {
       clientX = event.clientX;
       clientY = event.clientY;
@@ -230,21 +169,20 @@ export class AppComponent implements OnInit {
     }
 
     const pageIndex = this.draggedSignature.page - 1;
-    const pageContainer = this.getPageContainer(pageIndex);
+    const pageContainer = document.querySelector(
+      `[style*="width: ${this.pdfPages[pageIndex].width}px"]`
+    ) as HTMLElement;
     if (!pageContainer) return;
 
     const rect = pageContainer.getBoundingClientRect();
+    const scaleX = pageContainer.offsetWidth / this.pdfPages[pageIndex].width;
+    const scaleY = pageContainer.offsetHeight / this.pdfPages[pageIndex].height;
 
-    // Calculate screen coordinates
-    const screenX = clientX - rect.left - this.dragOffset.x;
-    const screenY = clientY - rect.top - this.dragOffset.y;
+    const newX = (clientX - rect.left - this.dragOffset.x) / scaleX;
+    const newY = (clientY - rect.top - this.dragOffset.y) / scaleY;
 
-    // Convert to PDF coordinates
-    const pdfCoords = this.screenToPdfCoords(screenX, screenY, pageIndex);
-
-    // Apply bounds checking in PDF space
-    this.draggedSignature.x = Math.max(0, Math.min(pdfCoords.x, this.pdfPages[pageIndex].width - this.draggedSignature.width));
-    this.draggedSignature.y = Math.max(0, Math.min(pdfCoords.y, this.pdfPages[pageIndex].height - this.draggedSignature.height));
+    this.draggedSignature.x = Math.max(0, Math.min(newX, this.pdfPages[pageIndex].width - this.draggedSignature.width));
+    this.draggedSignature.y = Math.max(0, Math.min(newY, this.pdfPages[pageIndex].height - this.draggedSignature.height));
   }
 
   /** ---------------- RESIZE / TOUCH ---------------- */
@@ -253,7 +191,8 @@ export class AppComponent implements OnInit {
     event.stopPropagation();
     this.resizingSignature = signature;
 
-    let clientX = 0, clientY = 0;
+    let clientX = 0,
+      clientY = 0;
     if (event instanceof MouseEvent) {
       clientX = event.clientX;
       clientY = event.clientY;
@@ -284,7 +223,8 @@ export class AppComponent implements OnInit {
   onResizeMove(event: MouseEvent | TouchEvent) {
     if (!this.resizingSignature) return;
 
-    let clientX = 0, clientY = 0;
+    let clientX = 0,
+      clientY = 0;
     if (event instanceof MouseEvent) {
       clientX = event.clientX;
       clientY = event.clientY;
@@ -294,34 +234,20 @@ export class AppComponent implements OnInit {
     }
 
     const pageIndex = this.resizingSignature.page - 1;
-    const pageContainer = this.getPageContainer(pageIndex);
+    const pageContainer = document.querySelector(
+      `[style*="width: ${this.pdfPages[pageIndex].width}px"]`
+    ) as HTMLElement;
     if (!pageContainer) return;
 
     const rect = pageContainer.getBoundingClientRect();
-    const { scaleX, scaleY } = this.getPageScaleFactors(pageIndex);
+    const scaleX = pageContainer.offsetWidth / this.pdfPages[pageIndex].width;
+    const scaleY = pageContainer.offsetHeight / this.pdfPages[pageIndex].height;
 
-    // Calculate screen coordinates relative to signature position
-    const signatureScreenX = this.resizingSignature.x * scaleX;
-    const signatureScreenY = this.resizingSignature.y * scaleY;
-
-    const screenWidth = clientX - rect.left - signatureScreenX;
-    const screenHeight = clientY - rect.top - signatureScreenY;
-
-    // Convert to PDF coordinates
-    const pdfWidth = screenWidth / scaleX;
-    const pdfHeight = screenHeight / scaleY;
-
-    // Apply bounds checking in PDF space
-    const newWidth = Math.max(50, pdfWidth);
-    const newHeight = Math.max(25, pdfHeight);
+    const newWidth = Math.max(50, (clientX - rect.left - this.resizingSignature.x) / scaleX);
+    const newHeight = Math.max(25, (clientY - rect.top - this.resizingSignature.y) / scaleY);
 
     this.resizingSignature.width = Math.min(newWidth, this.pdfPages[pageIndex].width - this.resizingSignature.x);
     this.resizingSignature.height = Math.min(newHeight, this.pdfPages[pageIndex].height - this.resizingSignature.y);
-  }
-
-  private getPageContainer(pageIndex: number): HTMLElement | null {
-    const pageContainers = document.querySelectorAll('.page-canvas-container');
-    return pageContainers[pageIndex] as HTMLElement || null;
   }
 
   getSignaturesForPage(pageNumber: number) {
@@ -361,6 +287,7 @@ export class AppComponent implements OnInit {
       for (const [pageNum, pageSignatures] of signaturesByPage) {
         const page = pdfDoc.getPage(pageNum - 1);
         const { width: pdfWidth, height: pdfHeight } = page.getSize();
+        const pageScale = this.pdfPages[pageNum - 1].scale;
 
         for (const sig of pageSignatures) {
           try {
@@ -369,14 +296,17 @@ export class AppComponent implements OnInit {
               ? await pdfDoc.embedPng(imageBytes)
               : await pdfDoc.embedJpg(imageBytes);
 
-            // Coordinates are already in PDF space, just need to flip Y axis
-            const pdfY = pdfHeight - sig.y - sig.height;
+            const scaledX = sig.x / pageScale;
+            const scaledY = sig.y / pageScale;
+            const scaledWidth = sig.width / pageScale;
+            const scaledHeight = sig.height / pageScale;
+            const pdfY = pdfHeight - scaledY - scaledHeight;
 
             page.drawImage(image, {
-              x: sig.x,
+              x: scaledX,
               y: pdfY,
-              width: sig.width,
-              height: sig.height
+              width: scaledWidth,
+              height: scaledHeight
             });
           } catch (error) {
             console.error('Error adding signature to page:', error);
