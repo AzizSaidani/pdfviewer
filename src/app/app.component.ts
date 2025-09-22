@@ -68,12 +68,20 @@ export class AppComponent implements OnInit {
 
   async renderPDF() {
     this.pdfPages = [];
-    const scale = 1.5;
+    // Adjust scale based on screen width for mobile
+    const baseScale = 1.5;
+    const maxWidth = window.innerWidth <= 600 ? window.innerWidth * 0.9 : 1200;
+    const scale = Math.min(baseScale, maxWidth / 595); // Assuming 595 is the default PDF page width (A4 at 72 DPI)
 
     for (let i = 1; i <= this.pdfDocument.numPages; i++) {
       const page = await this.pdfDocument.getPage(i);
       const viewport = page.getViewport({ scale });
-      this.pdfPages.push({ width: viewport.width, height: viewport.height, scale });
+      // Round dimensions to avoid fractional pixels
+      this.pdfPages.push({
+        width: Math.round(viewport.width),
+        height: Math.round(viewport.height),
+        scale
+      });
     }
 
     setTimeout(() => this.renderAllPages(), 100);
@@ -86,10 +94,21 @@ export class AppComponent implements OnInit {
       const canvas = canvases[i] as HTMLCanvasElement;
       const context = canvas.getContext('2d')!;
       const viewport = page.getViewport({ scale: this.pdfPages[i].scale });
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      await page.render({ canvasContext: context, viewport }).promise;
+
+      // Set canvas dimensions to match rounded container dimensions
+      canvas.width = this.pdfPages[i].width;
+      canvas.height = this.pdfPages[i].height;
+
+      // Ensure pdfPages dimensions are consistent
+      this.pdfPages[i].width = canvas.width;
+      this.pdfPages[i].height = canvas.height;
       this.pdfPages[i].canvas = canvas;
+
+      // Render the page
+      await page.render({ canvasContext: context, viewport }).promise;
+
+      // Debugging: Log dimensions to verify
+      console.log(`Page ${i + 1}: Canvas width=${canvas.width}, height=${canvas.height}, Container width=${this.pdfPages[i].width}, height=${this.pdfPages[i].height}`);
     }
   }
 
