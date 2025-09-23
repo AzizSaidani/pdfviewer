@@ -1,24 +1,23 @@
 <div class="app-container">
   <header class="header">
-    <div class="controls">
-      <button (click)="loadTestPDF()" class="btn btn-info" title="Load Test PDF">📋</button>
-      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature" title="Add Signature">➕</button>
-      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0" title="Save PDF">💾</button>
-      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0" title="Clear All">🗑️</button>
-    </div>
+    <!-- Main Controls -->
+    <nav class="controls" aria-label="Main actions">
+      <button (click)="loadTestPDF()" class="btn btn-info" title="Load Test PDF" aria-label="Load Test PDF">📋</button>
+      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature" title="Add Signature" aria-label="Add Signature">➕</button>
+      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0" title="Save PDF" aria-label="Save PDF">💾</button>
+      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0" title="Clear All Signatures" aria-label="Clear All">🗑️</button>
+    </nav>
 
     <!-- Page Navigation Controls -->
     <div class="page-controls" *ngIf="pdfLoaded">
-      <button (click)="goToPreviousPage()" class="btn btn-nav" [disabled]="currentPageNumber === 1" title="Previous Page">⬅️</button>
+      <button (click)="goToPreviousPage()" class="btn btn-nav" [disabled]="currentPageNumber === 1" title="Previous Page" aria-label="Previous Page">⬅️</button>
       <span class="page-info">Page {{ currentPageNumber }} / {{ totalPages }}</span>
-      <button (click)="goToNextPage()" class="btn btn-nav" [disabled]="currentPageNumber === totalPages" title="Next Page">➡️</button>
-      <span class="signature-summary" *ngIf="getTotalSignaturesCount() > 0">
-        ({{ getTotalSignaturesCount() }} ✍️ total)
-      </span>
+      <button (click)="goToNextPage()" class="btn btn-nav" [disabled]="currentPageNumber === totalPages" title="Next Page" aria-label="Next Page">➡️</button>
     </div>
   </header>
 
-  <div class="main-content" *ngIf="!pdfLoaded">
+  <!-- Upload Message -->
+  <section class="main-content" *ngIf="!pdfLoaded">
     <div class="upload-area">
       <div class="upload-message">
         <h2>Upload a PDF</h2>
@@ -26,9 +25,10 @@
         <div class="upload-icons">📄 ✏️</div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <div class="main-content" *ngIf="pdfLoaded && currentPageData">
+  <!-- PDF Viewer -->
+  <section class="main-content" *ngIf="pdfLoaded && currentPageData">
     <div class="pdf-viewer" #pdfViewer>
       <div class="page-container">
         <div class="page-header">
@@ -43,40 +43,41 @@
              [style.height.px]="currentPageData.height">
           <canvas [width]="currentPageData.width" [height]="currentPageData.height"></canvas>
 
-          <div *ngFor="let sig of getSignaturesForCurrentPage()"
-               class="placed-signature"
-               [style.left.px]="sig.x"
-               [style.top.px]="sig.y"
-               [style.width.px]="sig.width"
-               [style.height.px]="sig.height"
-               (mousedown)="startDrag(sig, $event)"
-               (touchstart)="startDrag(sig, $event)"
-               style="touch-action: none;">
-            <img [src]="sig.imageData" alt="Signature" class="signature-image">
-            <button class="delete-signature" (click)="removeSignature(sig.id)" title="Delete">×</button>
-            <div class="resize-handles">
-              <div class="resize-handle resize-se"
-                   (mousedown)="startResize(sig, $event)"
-                   (touchstart)="startResize(sig, $event)"
-                   style="touch-action: none;"></div>
+          <ng-container *ngFor="let sig of getSignaturesForCurrentPage()">
+            <div class="placed-signature"
+                 [style.left.px]="sig.x"
+                 [style.top.px]="sig.y"
+                 [style.width.px]="sig.width"
+                 [style.height.px]="sig.height"
+                 (mousedown)="startDrag(sig, $event)"
+                 (touchstart)="startDrag(sig, $event)">
+              <img [src]="sig.imageData" alt="Signature" class="signature-image">
+
+              <button class="delete-signature" (click)="removeSignature(sig.id)" title="Delete Signature" aria-label="Delete Signature">×</button>
+
+              <div class="resize-handles">
+                <div class="resize-handle resize-se"
+                     (mousedown)="startResize(sig, $event)"
+                     (touchstart)="startResize(sig, $event)">
+                </div>
+              </div>
             </div>
-          </div>
+          </ng-container>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Quick page navigation for mobile -->
-  <div class="page-navigation" *ngIf="pdfLoaded && totalPages > 1">
+  <!-- Quick Page Navigation -->
+  <nav class="page-navigation" *ngIf="pdfLoaded && totalPages > 1" aria-label="Page Navigation">
     <div class="page-dots">
       <button *ngFor="let page of [].constructor(totalPages); let i = index"
               (click)="goToPage(i + 1)"
               class="page-dot"
               [class.active]="currentPageNumber === i + 1"
-              [title]="'Page ' + (i + 1) + (getSignaturesCountForPage(i + 1) > 0 ? ' (' + getSignaturesCountForPage(i + 1) + ' signatures)' : '')">
+              [title]="'Page ' + (i + 1)">
         {{ i + 1 }}
-        <span *ngIf="getSignaturesCountForPage(i + 1) > 0" class="dot-signature-count">{{ getSignaturesCountForPage(i + 1) }}</span>
       </button>
     </div>
-  </div>
+  </nav>
 </div>
