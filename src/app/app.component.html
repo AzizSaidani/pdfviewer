@@ -6,6 +6,16 @@
       <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0" title="Save PDF">💾</button>
       <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0" title="Clear All">🗑️</button>
     </div>
+
+    <!-- Page Navigation Controls -->
+    <div class="page-controls" *ngIf="pdfLoaded">
+      <button (click)="goToPreviousPage()" class="btn btn-nav" [disabled]="currentPageNumber === 1" title="Previous Page">⬅️</button>
+      <span class="page-info">Page {{ currentPageNumber }} / {{ totalPages }}</span>
+      <button (click)="goToNextPage()" class="btn btn-nav" [disabled]="currentPageNumber === totalPages" title="Next Page">➡️</button>
+      <span class="signature-summary" *ngIf="getTotalSignaturesCount() > 0">
+        ({{ getTotalSignaturesCount() }} ✍️ total)
+      </span>
+    </div>
   </header>
 
   <div class="main-content" *ngIf="!pdfLoaded">
@@ -18,22 +28,22 @@
     </div>
   </div>
 
-  <div class="main-content" *ngIf="pdfLoaded">
+  <div class="main-content" *ngIf="pdfLoaded && currentPageData">
     <div class="pdf-viewer" #pdfViewer>
-      <div class="page-container" *ngFor="let page of pdfPages; let i = index">
+      <div class="page-container">
         <div class="page-header">
-          <span>Page {{ i + 1 }} / {{ pdfPages.length }}</span>
-          <span *ngIf="getSignaturesForPage(i + 1).length > 0" class="signature-count">
-            {{ getSignaturesForPage(i + 1).length }} ✍️
+          <span>Page {{ currentPageNumber }} / {{ totalPages }}</span>
+          <span *ngIf="getSignaturesForCurrentPage().length > 0" class="signature-count">
+            {{ getSignaturesForCurrentPage().length }} ✍️
           </span>
         </div>
 
         <div class="page-canvas-container"
-             [style.width.px]="page.width"
-             [style.height.px]="page.height">
-          <canvas [width]="page.width" [height]="page.height"></canvas>
+             [style.width.px]="currentPageData.width"
+             [style.height.px]="currentPageData.height">
+          <canvas [width]="currentPageData.width" [height]="currentPageData.height"></canvas>
 
-          <div *ngFor="let sig of getSignaturesForPage(i + 1)"
+          <div *ngFor="let sig of getSignaturesForCurrentPage()"
                class="placed-signature"
                [style.left.px]="sig.x"
                [style.top.px]="sig.y"
@@ -53,6 +63,20 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Quick page navigation for mobile -->
+  <div class="page-navigation" *ngIf="pdfLoaded && totalPages > 1">
+    <div class="page-dots">
+      <button *ngFor="let page of [].constructor(totalPages); let i = index"
+              (click)="goToPage(i + 1)"
+              class="page-dot"
+              [class.active]="currentPageNumber === i + 1"
+              [title]="'Page ' + (i + 1) + (getSignaturesCountForPage(i + 1) > 0 ? ' (' + getSignaturesCountForPage(i + 1) + ' signatures)' : '')">
+        {{ i + 1 }}
+        <span *ngIf="getSignaturesCountForPage(i + 1) > 0" class="dot-signature-count">{{ getSignaturesCountForPage(i + 1) }}</span>
+      </button>
     </div>
   </div>
 </div>
