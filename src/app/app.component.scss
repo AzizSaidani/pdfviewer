@@ -7,8 +7,6 @@
   background: #f9f9f9;
   font-family: 'Segoe UI', sans-serif;
   color: #333;
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Header */
@@ -45,13 +43,6 @@
 .signature-summary {
   color: #28a745;
   font-size: 0.8rem;
-}
-body.dragging,
-body.resizing {
-  overflow: hidden;
-  position: fixed;
-  width: 100%;
-  height: 100%;
 }
 
 /* Buttons */
@@ -141,84 +132,47 @@ body.resizing {
 }
 
 .page-canvas-container {
-  /* Disable native touch behaviors that might interfere */
-  touch-action: none;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-
-  /* Prevent text selection and context menus */
-  -webkit-tap-highlight-color: transparent;
-  -webkit-highlight: none;
-
-  /* Improve touch responsiveness */
-  cursor: default;
+  position: relative;
+  margin: 0 auto;
+  max-width: 100%;
+  background: white;
+  overflow: hidden;
 }
 
 canvas {
-  /* Prevent canvas from interfering with touch events */
-  pointer-events: none;
-  touch-action: none;
-
-  /* Improve rendering on high-DPI displays */
-  image-rendering: -webkit-optimize-contrast;
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+  /* Improve canvas rendering quality */
   image-rendering: crisp-edges;
-
-  /* Prevent selection */
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
+  /* Prevent blurry scaling */
+  transform-origin: top left;
 }
 
 /* Signature */
 .placed-signature {
-  /* Critical: prevent all default touch behaviors */
-  touch-action: none;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-
-  /* Improve touch target */
-  min-width: 44px;
-  min-height: 44px;
-
-  /* Ensure it's above other elements */
-  z-index: 10;
-
-  /* Improve visual feedback */
-  transition: none; /* Disable transitions during drag */
+  position: absolute;
+  border: 1px solid transparent;
 }
 
 .signature-image {
-  pointer-events: none;
-  touch-action: none;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  -webkit-user-drag: none;
-  -khtml-user-drag: none;
-  -moz-user-drag: none;
-  -o-user-drag: none;
-  user-drag: none;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
 }
 
 .delete-signature {
-  touch-action: manipulation;
-  -webkit-touch-callout: none;
-  min-width: 44px;
-  min-height: 44px;
-  z-index: 12;
-
-  /* Better visibility */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  border: 2px solid white;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: #dc3545;
+  color: #fff;
+  font-size: 12px;
+  display: none;
 }
 
 .placed-signature:hover .delete-signature {
@@ -226,27 +180,13 @@ canvas {
 }
 
 .resize-handle {
-  touch-action: none;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-
-  /* Ensure good touch target size */
-  min-width: 44px;
-  min-height: 44px;
-
-  /* Center the visual handle within the larger touch area */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Visual indicator (smaller than touch area) */
+  position: absolute;
+  width: 10px;
+  height: 10px;
   background: #007bff;
-  border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-
-  /* Ensure it's above signature */
-  z-index: 11;
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
 }
 
 /* Page Navigation */
