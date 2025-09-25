@@ -102,67 +102,50 @@ export class AppComponent implements OnInit {
     const context = canvas.getContext('2d')!;
     const page = await this.pdfDocument.getPage(this.currentPageNumber);
 
-    // Enhanced mobile scaling - use higher pixel ratio for better quality
     const devicePixelRatio = window.devicePixelRatio || 1;
     const isMobile = window.innerWidth <= 768;
 
-    // Use higher quality scale on mobile devices
     const qualityScale = isMobile ? Math.max(devicePixelRatio, 2.0) : devicePixelRatio;
     const renderScale = this.currentPageData.scale * qualityScale;
 
     const viewport = page.getViewport({ scale: renderScale });
 
-    // Set canvas internal resolution (high quality)
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
 
-    // Set CSS display size (what user sees)
     canvas.style.width = `${this.currentPageData.width}px`;
     canvas.style.height = `${this.currentPageData.height}px`;
 
     this.currentPageData.canvas = canvas;
 
-    // Enhanced context settings for better text rendering
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
 
-    // Render at high quality
     const renderContext = {
       canvasContext: context,
       viewport: viewport,
-      // Enhanced rendering intent for better text quality
       intent: 'display' as any,
       renderInteractiveForms: false,
-      // Additional quality settings
       optionalContentConfigPromise: null,
       annotationMode: 0
     };
 
     await page.render(renderContext).promise;
-
-    console.log(`Rendered page ${this.currentPageNumber} at scale ${renderScale} (quality: ${qualityScale}x)`);
   }
 
-  /** Enhanced scale calculation for mobile devices */
+  /** Scale calculation */
   private getPageScale(): number {
     const isMobile = window.innerWidth <= 768;
     const isTablet = window.innerWidth > 768 && window.innerWidth <= 1024;
 
     if (isMobile) {
-      // Mobile: Use 85% of screen width with higher base scale
       const availableWidth = window.innerWidth * 0.85;
-      const baseScale = 1.2; // Increased from 1.0
-      return Math.min(baseScale, availableWidth / 595);
+      return Math.min(1.2, availableWidth / 595);
     } else if (isTablet) {
-      // Tablet: Use 90% of screen width
       const availableWidth = window.innerWidth * 0.9;
-      const baseScale = 1.4;
-      return Math.min(baseScale, availableWidth / 595);
+      return Math.min(1.4, availableWidth / 595);
     } else {
-      // Desktop: Original logic with slight enhancement
-      const baseScale = 1.6; // Increased from 1.5
-      const maxWidth = 1200;
-      return Math.min(baseScale, maxWidth / 595);
+      return Math.min(1.6, 1200 / 595);
     }
   }
 
@@ -181,18 +164,10 @@ export class AppComponent implements OnInit {
     }
   }
 
-  goToPage(pageNumber: number) {
-    if (pageNumber >= 1 && pageNumber <= this.totalPages) {
-      this.currentPageNumber = pageNumber;
-      this.renderCurrentPage();
-    }
-  }
-
-  /** Add a signature to current page */
+  /** Add signature */
   addSignature() {
     if (!this.currentSignature || !this.pdfLoaded || !this.currentPageData) return;
 
-    // Calculate center position based on page dimensions
     const signatureWidth = 100;
     const signatureHeight = 50;
     const centerX = (this.currentPageData.width - signatureWidth) / 2;
@@ -206,17 +181,15 @@ export class AppComponent implements OnInit {
       height: signatureHeight,
       page: this.currentPageNumber,
       imageData: this.currentSignature
-    });}
-
-
-    /** ---------------- DRAG / RESIZE ---------------- */
-  private getClientCoordinates(event: MouseEvent | TouchEvent): { x: number; y: number } {
-    return event instanceof MouseEvent
-      ? { x: event.clientX, y: event.clientY }
-      : { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    });
   }
 
-  startDrag(signature: SignaturePosition, event: MouseEvent | TouchEvent) {
+  /** ---------------- DRAG / RESIZE with POINTER EVENTS ---------------- */
+  private getClientCoordinates(event: PointerEvent): { x: number; y: number } {
+    return { x: event.clientX, y: event.clientY };
+  }
+
+  startDrag(signature: SignaturePosition, event: PointerEvent) {
     event.preventDefault();
     this.draggedSignature = signature;
 
@@ -224,13 +197,13 @@ export class AppComponent implements OnInit {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     this.dragOffset = { x: x - rect.left, y: y - rect.top };
 
-    this.attachListeners(
+    this.attachPointerListeners(
       e => this.onDragMove(e),
       () => (this.draggedSignature = null)
     );
   }
 
-  onDragMove(event: MouseEvent | TouchEvent) {
+  onDragMove(event: PointerEvent) {
     if (!this.draggedSignature || !this.currentPageData) return;
 
     const { x, y } = this.getClientCoordinates(event);
@@ -245,7 +218,7 @@ export class AppComponent implements OnInit {
     this.draggedSignature.y = this.clamp((y - rect.top - this.dragOffset.y) / scaleY, 0, this.currentPageData.height - this.draggedSignature.height);
   }
 
-  startResize(signature: SignaturePosition, event: MouseEvent | TouchEvent) {
+  startResize(signature: SignaturePosition, event: PointerEvent) {
     event.preventDefault();
     event.stopPropagation();
     this.resizingSignature = signature;
@@ -254,13 +227,13 @@ export class AppComponent implements OnInit {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     this.resizeOffset = { x: x - rect.left, y: y - rect.top };
 
-    this.attachListeners(
+    this.attachPointerListeners(
       e => this.onResizeMove(e),
       () => (this.resizingSignature = null)
     );
   }
 
-  onResizeMove(event: MouseEvent | TouchEvent) {
+  onResizeMove(event: PointerEvent) {
     if (!this.resizingSignature || !this.currentPageData) return;
 
     const { x, y } = this.getClientCoordinates(event);
@@ -278,28 +251,25 @@ export class AppComponent implements OnInit {
     this.resizingSignature.height = this.clamp(newHeight, 25, this.currentPageData.height - this.resizingSignature.y);
   }
 
-  /** Utility: clamp a value between min and max */
   private clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
   }
 
-  /** Attach mouse/touch listeners and cleanup on release */
-  private attachListeners(moveHandler: (e: MouseEvent | TouchEvent) => void, endCallback: () => void) {
+  private attachPointerListeners(
+    moveHandler: (e: PointerEvent) => void,
+    endCallback: () => void
+  ) {
     const endHandler = () => {
-      document.removeEventListener('mousemove', moveHandler as any);
-      document.removeEventListener('mouseup', endHandler);
-      document.removeEventListener('touchmove', moveHandler as any);
-      document.removeEventListener('touchend', endHandler);
+      document.removeEventListener('pointermove', moveHandler);
+      document.removeEventListener('pointerup', endHandler);
       endCallback();
     };
 
-    document.addEventListener('mousemove', moveHandler as any);
-    document.addEventListener('mouseup', endHandler);
-    document.addEventListener('touchmove', moveHandler as any, { passive: false });
-    document.addEventListener('touchend', endHandler);
+    document.addEventListener('pointermove', moveHandler);
+    document.addEventListener('pointerup', endHandler);
   }
 
-  /** ---------------- SIGNATURE UTILITIES ---------------- */
+  /** Utilities */
   getSignaturesForCurrentPage() {
     return this.signatures.filter(sig => sig.page === this.currentPageNumber);
   }
@@ -312,13 +282,11 @@ export class AppComponent implements OnInit {
     this.signatures = [];
   }
 
-  /** Convert base64 image data to byte array */
   private dataURLToBytes(dataURL: string): Uint8Array {
     const base64 = dataURL.split(',')[1];
     return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
   }
 
-  /** Save PDF with embedded signatures */
   async savePDF() {
     if (!this.pdfDocument || this.signatures.length === 0) return;
 
