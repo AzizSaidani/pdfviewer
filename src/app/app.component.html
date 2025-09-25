@@ -27,7 +27,7 @@
     </div>
   </section>
 
-  <!-- Enhanced PDF Viewer with Mobile Quality -->
+  <!-- Enhanced PDF Viewer with Flutter WebView Compatibility -->
   <section class="main-content" *ngIf="pdfLoaded && currentPageData">
     <div class="pdf-viewer" #pdfViewer>
       <div class="page-container">
@@ -40,27 +40,47 @@
 
         <div class="page-canvas-container"
              [style.width.px]="currentPageData.width"
-             [style.height.px]="currentPageData.height">
-          <!-- Enhanced canvas with mobile quality improvements -->
-          <canvas [width]="currentPageData.width" [height]="currentPageData.height"></canvas>
+             [style.height.px]="currentPageData.height"
+             style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
 
+          <!-- Enhanced canvas with mobile quality improvements -->
+          <canvas [width]="currentPageData.width"
+                  [height]="currentPageData.height"
+                  style="touch-action: none; pointer-events: none;"></canvas>
+
+          <!-- Flutter WebView optimized signatures -->
           <ng-container *ngFor="let sig of getSignaturesForCurrentPage()">
             <div class="placed-signature"
                  [style.left.px]="sig.x"
                  [style.top.px]="sig.y"
                  [style.width.px]="sig.width"
                  [style.height.px]="sig.height"
-                 (pointerdown)="startDrag(sig, $event)">
-              <img [src]="sig.imageData" alt="Signature" class="signature-image">
+                 style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+                 (pointerdown)="startDrag(sig, $event)"
+                 (touchstart)="startDrag(sig, $event)"
+                 (mousedown)="startDrag(sig, $event)">
+
+              <img [src]="sig.imageData"
+                   alt="Signature"
+                   class="signature-image"
+                   style="pointer-events: none; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+                   draggable="false">
 
               <button class="delete-signature"
                       (click)="removeSignature(sig.id)"
+                      (pointerdown)="$event.stopPropagation()"
+                      (touchstart)="$event.stopPropagation()"
+                      (mousedown)="$event.stopPropagation()"
                       title="Delete Signature"
-                      aria-label="Delete Signature">×</button>
+                      aria-label="Delete Signature"
+                      style="touch-action: manipulation;">×</button>
 
               <div class="resize-handles">
                 <div class="resize-handle resize-se"
-                     (pointerdown)="startResize(sig, $event)">
+                     style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+                     (pointerdown)="startResize(sig, $event)"
+                     (touchstart)="startResize(sig, $event)"
+                     (mousedown)="startResize(sig, $event)">
                 </div>
               </div>
             </div>
