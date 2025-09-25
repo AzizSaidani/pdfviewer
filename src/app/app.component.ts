@@ -36,10 +36,6 @@ export class AppComponent implements OnInit {
   dragOffset = { x: 0, y: 0 };
   resizeOffset = { x: 0, y: 0 };
 
-  // swipe handling
-  private touchStartX = 0;
-  private touchEndX = 0;
-
   ngOnInit() {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -106,30 +102,38 @@ export class AppComponent implements OnInit {
     const context = canvas.getContext('2d')!;
     const page = await this.pdfDocument.getPage(this.currentPageNumber);
 
+    // Enhanced mobile scaling - use higher pixel ratio for better quality
     const devicePixelRatio = window.devicePixelRatio || 1;
     const isMobile = window.innerWidth <= 768;
 
+    // Use higher quality scale on mobile devices
     const qualityScale = isMobile ? Math.max(devicePixelRatio, 2.0) : devicePixelRatio;
     const renderScale = this.currentPageData.scale * qualityScale;
 
     const viewport = page.getViewport({ scale: renderScale });
 
+    // Set canvas internal resolution (high quality)
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
 
+    // Set CSS display size (what user sees)
     canvas.style.width = `${this.currentPageData.width}px`;
     canvas.style.height = `${this.currentPageData.height}px`;
 
     this.currentPageData.canvas = canvas;
 
+    // Enhanced context settings for better text rendering
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
 
+    // Render at high quality
     const renderContext = {
       canvasContext: context,
       viewport: viewport,
+      // Enhanced rendering intent for better text quality
       intent: 'display' as any,
       renderInteractiveForms: false,
+      // Additional quality settings
       optionalContentConfigPromise: null,
       annotationMode: 0
     };
@@ -145,15 +149,18 @@ export class AppComponent implements OnInit {
     const isTablet = window.innerWidth > 768 && window.innerWidth <= 1024;
 
     if (isMobile) {
+      // Mobile: Use 85% of screen width with higher base scale
       const availableWidth = window.innerWidth * 0.85;
-      const baseScale = 1.2;
+      const baseScale = 1.2; // Increased from 1.0
       return Math.min(baseScale, availableWidth / 595);
     } else if (isTablet) {
+      // Tablet: Use 90% of screen width
       const availableWidth = window.innerWidth * 0.9;
       const baseScale = 1.4;
       return Math.min(baseScale, availableWidth / 595);
     } else {
-      const baseScale = 1.6;
+      // Desktop: Original logic with slight enhancement
+      const baseScale = 1.6; // Increased from 1.5
       const maxWidth = 1200;
       return Math.min(baseScale, maxWidth / 595);
     }
@@ -185,6 +192,7 @@ export class AppComponent implements OnInit {
   addSignature() {
     if (!this.currentSignature || !this.pdfLoaded || !this.currentPageData) return;
 
+    // Calculate center position based on page dimensions
     const signatureWidth = 100;
     const signatureHeight = 50;
     const centerX = (this.currentPageData.width - signatureWidth) / 2;
@@ -198,10 +206,10 @@ export class AppComponent implements OnInit {
       height: signatureHeight,
       page: this.currentPageNumber,
       imageData: this.currentSignature
-    });
-  }
+    });}
 
-  /** ---------------- DRAG / RESIZE ---------------- */
+
+    /** ---------------- DRAG / RESIZE ---------------- */
   private getClientCoordinates(event: MouseEvent | TouchEvent): { x: number; y: number } {
     return event instanceof MouseEvent
       ? { x: event.clientX, y: event.clientY }
@@ -270,10 +278,12 @@ export class AppComponent implements OnInit {
     this.resizingSignature.height = this.clamp(newHeight, 25, this.currentPageData.height - this.resizingSignature.y);
   }
 
+  /** Utility: clamp a value between min and max */
   private clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
   }
 
+  /** Attach mouse/touch listeners and cleanup on release */
   private attachListeners(moveHandler: (e: MouseEvent | TouchEvent) => void, endCallback: () => void) {
     const endHandler = () => {
       document.removeEventListener('mousemove', moveHandler as any);
@@ -302,11 +312,13 @@ export class AppComponent implements OnInit {
     this.signatures = [];
   }
 
+  /** Convert base64 image data to byte array */
   private dataURLToBytes(dataURL: string): Uint8Array {
     const base64 = dataURL.split(',')[1];
     return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
   }
 
+  /** Save PDF with embedded signatures */
   async savePDF() {
     if (!this.pdfDocument || this.signatures.length === 0) return;
 
@@ -363,28 +375,5 @@ export class AppComponent implements OnInit {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }
-
-  /** ---------------- SWIPE HANDLING ---------------- */
-  onTouchStart(event: TouchEvent) {
-    this.touchStartX = event.changedTouches[0].screenX;
-  }
-
-  onTouchEnd(event: TouchEvent) {
-    this.touchEndX = event.changedTouches[0].screenX;
-    this.handleSwipe();
-  }
-
-  private handleSwipe() {
-    const swipeThreshold = 50; // minimum px needed
-    const diff = this.touchEndX - this.touchStartX;
-
-    if (Math.abs(diff) > swipeThreshold) {
-      if (diff > 0) {
-        this.goToPreviousPage();
-      } else {
-        this.goToNextPage();
-      }
-    }
   }
 }

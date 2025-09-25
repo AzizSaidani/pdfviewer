@@ -29,8 +29,7 @@
 
   <!-- Enhanced PDF Viewer with Mobile Quality -->
   <section class="main-content" *ngIf="pdfLoaded && currentPageData">
-    <div class="pdf-viewer" #pdfViewer (touchstart)="onTouchStart($event)"
-         (touchend)="onTouchEnd($event)">
+    <div class="pdf-viewer" #pdfViewer >
       <div class="page-container">
         <div class="page-header">
           <span>Page {{ currentPageNumber }} / {{ totalPages }}</span>
