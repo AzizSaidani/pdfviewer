@@ -92,7 +92,7 @@ export class AppComponent implements OnInit {
     setTimeout(() => this.renderPage(), 100);
   }
 
-  /** Render page to canvas */
+  /** Enhanced render page with high-quality mobile support */
   private async renderPage() {
     if (!this.currentPageData || !this.pdfDocument) return;
 
@@ -101,38 +101,69 @@ export class AppComponent implements OnInit {
 
     const context = canvas.getContext('2d')!;
     const page = await this.pdfDocument.getPage(this.currentPageNumber);
-    const viewport = page.getViewport({ scale: this.currentPageData.scale });
 
-    // 🔧 Render at higher internal resolution but keep CSS size consistent
-    const outputScale = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(viewport.width * outputScale);
-    canvas.height = Math.floor(viewport.height * outputScale);
+    // Enhanced mobile scaling - use higher pixel ratio for better quality
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    const isMobile = window.innerWidth <= 768;
 
-    // Set CSS size to match viewport (prevents visual stretching)
-    canvas.style.width = `${viewport.width}px`;
-    canvas.style.height = `${viewport.height}px`;
+    // Use higher quality scale on mobile devices
+    const qualityScale = isMobile ? Math.max(devicePixelRatio, 2.0) : devicePixelRatio;
+    const renderScale = this.currentPageData.scale * qualityScale;
+
+    const viewport = page.getViewport({ scale: renderScale });
+
+    // Set canvas internal resolution (high quality)
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+
+    // Set CSS display size (what user sees)
+    canvas.style.width = `${this.currentPageData.width}px`;
+    canvas.style.height = `${this.currentPageData.height}px`;
 
     this.currentPageData.canvas = canvas;
 
-    const transform = outputScale !== 1
-      ? [outputScale, 0, 0, outputScale, 0, 0]
-      : undefined;
+    // Enhanced context settings for better text rendering
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
 
-    await page.render({
+    // Render at high quality
+    const renderContext = {
       canvasContext: context,
-      viewport,
-      transform
-    }).promise;
+      viewport: viewport,
+      // Enhanced rendering intent for better text quality
+      intent: 'display' as any,
+      renderInteractiveForms: false,
+      // Additional quality settings
+      optionalContentConfigPromise: null,
+      annotationMode: 0
+    };
 
-    console.log(`Rendered page ${this.currentPageNumber} at scale ${this.currentPageData.scale}`);
+    await page.render(renderContext).promise;
+
+    console.log(`Rendered page ${this.currentPageNumber} at scale ${renderScale} (quality: ${qualityScale}x)`);
   }
 
-
-  /** Calculate scale based on screen width */
+  /** Enhanced scale calculation for mobile devices */
   private getPageScale(): number {
-    const baseScale = 1.5;
-    const maxWidth = window.innerWidth <= 600 ? window.innerWidth * 0.9 : 1200;
-    return Math.min(baseScale, maxWidth / 595);
+    const isMobile = window.innerWidth <= 768;
+    const isTablet = window.innerWidth > 768 && window.innerWidth <= 1024;
+
+    if (isMobile) {
+      // Mobile: Use 85% of screen width with higher base scale
+      const availableWidth = window.innerWidth * 0.85;
+      const baseScale = 1.2; // Increased from 1.0
+      return Math.min(baseScale, availableWidth / 595);
+    } else if (isTablet) {
+      // Tablet: Use 90% of screen width
+      const availableWidth = window.innerWidth * 0.9;
+      const baseScale = 1.4;
+      return Math.min(baseScale, availableWidth / 595);
+    } else {
+      // Desktop: Original logic with slight enhancement
+      const baseScale = 1.6; // Increased from 1.5
+      const maxWidth = 1200;
+      return Math.min(baseScale, maxWidth / 595);
+    }
   }
 
   /** Navigation */

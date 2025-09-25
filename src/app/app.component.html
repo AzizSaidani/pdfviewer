@@ -27,7 +27,7 @@
     </div>
   </section>
 
-  <!-- PDF Viewer -->
+  <!-- Enhanced PDF Viewer with Mobile Quality -->
   <section class="main-content" *ngIf="pdfLoaded && currentPageData">
     <div class="pdf-viewer" #pdfViewer>
       <div class="page-container">
@@ -41,6 +41,7 @@
         <div class="page-canvas-container"
              [style.width.px]="currentPageData.width"
              [style.height.px]="currentPageData.height">
+          <!-- Enhanced canvas with mobile quality improvements -->
           <canvas [width]="currentPageData.width" [height]="currentPageData.height"></canvas>
 
           <ng-container *ngFor="let sig of getSignaturesForCurrentPage()">
@@ -68,16 +69,4 @@
     </div>
   </section>
 
-  <!-- Quick Page Navigation -->
-  <nav class="page-navigation" *ngIf="pdfLoaded && totalPages > 1" aria-label="Page Navigation">
-    <div class="page-dots">
-      <button *ngFor="let page of [].constructor(totalPages); let i = index"
-              (click)="goToPage(i + 1)"
-              class="page-dot"
-              [class.active]="currentPageNumber === i + 1"
-              [title]="'Page ' + (i + 1)">
-        {{ i + 1 }}
-      </button>
-    </div>
-  </nav>
 </div>
