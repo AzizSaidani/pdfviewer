@@ -192,18 +192,24 @@ export class AppComponent implements OnInit {
   addSignature() {
     if (!this.currentSignature || !this.pdfLoaded || !this.currentPageData) return;
 
+    // Calculate center position based on page dimensions
+    const signatureWidth = 100;
+    const signatureHeight = 50;
+    const centerX = (this.currentPageData.width - signatureWidth) / 2;
+    const centerY = (this.currentPageData.height - signatureHeight) / 2;
+
     this.signatures.push({
       id: Date.now().toString(),
-      x: 50,
-      y: 50,
-      width: 100,
-      height: 50,
+      x: centerX,
+      y: centerY,
+      width: signatureWidth,
+      height: signatureHeight,
       page: this.currentPageNumber,
       imageData: this.currentSignature
-    });
-  }
+    });}
 
-  /** ---------------- DRAG / RESIZE ---------------- */
+
+    /** ---------------- DRAG / RESIZE ---------------- */
   private getClientCoordinates(event: MouseEvent | TouchEvent): { x: number; y: number } {
     return event instanceof MouseEvent
       ? { x: event.clientX, y: event.clientY }
