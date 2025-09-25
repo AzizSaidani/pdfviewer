@@ -29,7 +29,7 @@
 
   <!-- Enhanced PDF Viewer with Mobile Quality -->
   <section class="main-content" *ngIf="pdfLoaded && currentPageData">
-    <div class="pdf-viewer" #pdfViewer >
+    <div class="pdf-viewer" #pdfViewer>
       <div class="page-container">
         <div class="page-header">
           <span>Page {{ currentPageNumber }} / {{ totalPages }}</span>
@@ -50,16 +50,17 @@
                  [style.top.px]="sig.y"
                  [style.width.px]="sig.width"
                  [style.height.px]="sig.height"
-                 (mousedown)="startDrag(sig, $event)"
-                 (touchstart)="startDrag(sig, $event)">
+                 (pointerdown)="startDrag(sig, $event)">
               <img [src]="sig.imageData" alt="Signature" class="signature-image">
 
-              <button class="delete-signature" (click)="removeSignature(sig.id)" title="Delete Signature" aria-label="Delete Signature">×</button>
+              <button class="delete-signature"
+                      (click)="removeSignature(sig.id)"
+                      title="Delete Signature"
+                      aria-label="Delete Signature">×</button>
 
               <div class="resize-handles">
                 <div class="resize-handle resize-se"
-                     (mousedown)="startResize(sig, $event)"
-                     (touchstart)="startResize(sig, $event)">
+                     (pointerdown)="startResize(sig, $event)">
                 </div>
               </div>
             </div>
@@ -68,5 +69,4 @@
       </div>
     </div>
   </section>
-
 </div>
