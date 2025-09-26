@@ -153,12 +153,18 @@ canvas {
 .placed-signature {
   position: absolute;
   border: 1px solid transparent;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
 }
 
 .signature-image {
   width: 100%;
   height: 100%;
   object-fit: fill;
+  pointer-events: none;
 }
 
 .delete-signature {
