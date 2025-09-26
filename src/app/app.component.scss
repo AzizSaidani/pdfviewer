@@ -110,12 +110,17 @@
   padding: 1rem;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
+
 }
 
 .page-container {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  display: inline-block;    // shrink to content height
+  padding-bottom: 5px;
+
 }
 
 .page-header {
@@ -137,6 +142,7 @@
   max-width: 100%;
   background: white;
   overflow: hidden;
+  height: auto !important;
 }
 
 canvas {
