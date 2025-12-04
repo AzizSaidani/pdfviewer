@@ -35,8 +35,7 @@
                 "glob": "**/*",
                 "input": "public"
               }
-            ]
-          ,
+            ],
             "styles": [
               "src/styles.scss"
             ],
@@ -52,8 +51,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kB",
-                  "maximumError": "4kB"
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
                 }
               ],
               "outputHashing": "all",
@@ -74,7 +73,8 @@
               "buildTarget": "pdfviewer:build:production"
             },
             "development": {
-              "buildTarget": "pdfviewer:build:development"
+              "buildTarget": "pdfviewer:build:development",
+              "proxyConfig": "src/proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

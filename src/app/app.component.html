@@ -2,26 +2,59 @@
   <header class="header">
     <!-- Main Controls -->
     <nav class="controls" aria-label="Main actions">
-      <button (click)="loadTestPDF()" class="btn btn-info" title="Load Test PDF" aria-label="Load Test PDF">📋</button>
-      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature" title="Add Signature" aria-label="Add Signature">➕</button>
-      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0" title="Save PDF" aria-label="Save PDF">💾</button>
-      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0" title="Clear All Signatures" aria-label="Clear All">🗑️</button>
+      <button (click)="addSignature()" class="btn btn-secondary"
+        [disabled]="!pdfLoaded || !currentSignature || loading.signature" title="Add Signature"
+        aria-label="Add Signature">✍️</button>
+      <button (click)="addInitial()" class="btn btn-secondary"
+        [disabled]="!pdfLoaded || !currentInitial || loading.initial" title="Add Initial"
+        aria-label="Add Initial">🔤</button>
+      <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0"
+        title="Save PDF" aria-label="Save PDF">💾</button>
+      <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0"
+        title="Clear All Signatures" aria-label="Clear All">🗑️</button>
     </nav>
 
     <!-- Page Navigation Controls -->
     <div class="page-controls" *ngIf="pdfLoaded">
-      <button (click)="goToPreviousPage()" class="btn btn-nav" [disabled]="currentPageNumber === 1" title="Previous Page" aria-label="Previous Page">⬅️</button>
+      <button (click)="goToPreviousPage()" class="btn btn-nav" [disabled]="currentPageNumber === 1"
+        title="Previous Page" aria-label="Previous Page">⬅️</button>
       <span class="page-info">Page {{ currentPageNumber }} / {{ totalPages }}</span>
-      <button (click)="goToNextPage()" class="btn btn-nav" [disabled]="currentPageNumber === totalPages" title="Next Page" aria-label="Next Page">➡️</button>
+      <button (click)="goToNextPage()" class="btn btn-nav" [disabled]="currentPageNumber === totalPages"
+        title="Next Page" aria-label="Next Page">➡️</button>
     </div>
   </header>
 
-  <!-- Upload Message -->
+  <!-- Loading and Error Messages -->
   <section class="main-content" *ngIf="!pdfLoaded">
     <div class="upload-area">
-      <div class="upload-message">
-        <h2>Upload a PDF</h2>
-        <p>Tap 📋 to load the sample</p>
+      <!-- General Error -->
+      <div class="error-message" *ngIf="errors.general">
+        <h3>⚠️ Error</h3>
+        <p>{{ errors.general }}</p>
+      </div>
+
+      <!-- PDF Loading -->
+      <div class="loading-message" *ngIf="loading.pdf">
+        <div class="spinner"></div>
+        <p>Loading PDF...</p>
+      </div>
+
+      <!-- PDF Error -->
+      <div class="error-message" *ngIf="errors.pdf">
+        <h3>⚠️ PDF Load Error</h3>
+        <p>{{ errors.pdf }}</p>
+      </div>
+
+      <!-- Signature/Initial Loading -->
+      <div class="info-message" *ngIf="loading.signature || loading.initial">
+        <div class="spinner"></div>
+        <p>Loading signature and initial...</p>
+      </div>
+
+      <!-- Waiting for PDF -->
+      <div class="upload-message" *ngIf="!loading.pdf && !errors.pdf && !errors.general">
+        <h2>PDF Viewer</h2>
+        <p>Initializing...</p>
         <div class="upload-icons">📄 ✏️</div>
       </div>
     </div>
@@ -38,49 +71,36 @@
           </span>
         </div>
 
-        <div class="page-canvas-container"
-             [style.width.px]="currentPageData.width"
-             [style.height.px]="currentPageData.height"
-             style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
+        <div class="page-canvas-container" [style.width.px]="currentPageData.width"
+          [style.height.px]="currentPageData.height"
+          style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
 
           <!-- Enhanced canvas with mobile quality improvements -->
-          <canvas [width]="currentPageData.width"
-                  [height]="currentPageData.height"
-                  style="touch-action: none; pointer-events: none;"></canvas>
+          <canvas [width]="currentPageData.width" [height]="currentPageData.height"
+            style="touch-action: none; pointer-events: none;"></canvas>
 
           <!-- Flutter WebView optimized signatures -->
           <ng-container *ngFor="let sig of getSignaturesForCurrentPage()">
-            <div class="placed-signature"
-                 [style.left.px]="sig.x"
-                 [style.top.px]="sig.y"
-                 [style.width.px]="sig.width"
-                 [style.height.px]="sig.height"
-                 style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
-                 (pointerdown)="startDrag(sig, $event)"
-                 (touchstart)="startDrag(sig, $event)"
-                 (mousedown)="startDrag(sig, $event)">
+            <div class="placed-signature" [style.left.px]="sig.x" [style.top.px]="sig.y" [style.width.px]="sig.width"
+              [style.height.px]="sig.height"
+              style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+              (pointerdown)="startDrag(sig, $event)" (touchstart)="startDrag(sig, $event)"
+              (mousedown)="startDrag(sig, $event)">
 
-              <img [src]="sig.imageData"
-                   alt="Signature"
-                   class="signature-image"
-                   style="pointer-events: none; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
-                   draggable="false">
+              <img [src]="sig.imageData" alt="Signature" class="signature-image"
+                style="pointer-events: none; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+                draggable="false">
 
-              <button class="delete-signature"
-                      (click)="removeSignature(sig.id)"
-                      (pointerdown)="$event.stopPropagation()"
-                      (touchstart)="$event.stopPropagation()"
-                      (mousedown)="$event.stopPropagation()"
-                      title="Delete Signature"
-                      aria-label="Delete Signature"
-                      style="touch-action: manipulation;">×</button>
+              <button class="delete-signature" (click)="removeSignature(sig.id)"
+                (pointerdown)="$event.stopPropagation()" (touchstart)="$event.stopPropagation()"
+                (mousedown)="$event.stopPropagation()" title="Delete Signature" aria-label="Delete Signature"
+                style="touch-action: manipulation;">×</button>
 
               <div class="resize-handles">
                 <div class="resize-handle resize-se"
-                     style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
-                     (pointerdown)="startResize(sig, $event)"
-                     (touchstart)="startResize(sig, $event)"
-                     (mousedown)="startResize(sig, $event)">
+                  style="touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+                  (pointerdown)="startResize(sig, $event)" (touchstart)="startResize(sig, $event)"
+                  (mousedown)="startResize(sig, $event)">
                 </div>
               </div>
             </div>

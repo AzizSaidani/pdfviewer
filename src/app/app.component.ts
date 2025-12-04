@@ -1,16 +1,10 @@
 import { Component, ElementRef, ViewChild, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as pdfjsLib from 'pdfjs-dist';
-
-interface SignaturePosition {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  page: number;
-  imageData: string;
-}
+import { Subscription } from 'rxjs';
+import { UrlParamsService } from './services/url-params.service';
+import { SignatureService } from './services/signature.service';
+import { SignaturePosition, LoadingState, ErrorState } from './models/signature.model';
 
 interface TouchPosition {
   x: number;
@@ -19,10 +13,10 @@ interface TouchPosition {
 }
 
 @Component({
-    selector: 'app-root',
-    imports: [CommonModule],
-    templateUrl: './app.component.html',
-    styleUrls: ['./app.component.scss']
+  selector: 'app-root',
+  imports: [CommonModule],
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit, OnDestroy {
   @ViewChild('pdfViewer') pdfViewer!: ElementRef<HTMLDivElement>;
@@ -35,6 +29,21 @@ export class AppComponent implements OnInit, OnDestroy {
 
   signatures: SignaturePosition[] = [];
   currentSignature: string | null = null;
+  currentInitial: string | null = null;
+
+  // Loading and error states
+  loading: LoadingState = {
+    pdf: false,
+    signature: false,
+    initial: false
+  };
+
+  errors: ErrorState = {
+    pdf: null,
+    signature: null,
+    initial: null,
+    general: null
+  };
 
   // Original drag/resize properties
   draggedSignature: SignaturePosition | null = null;
@@ -49,48 +58,153 @@ export class AppComponent implements OnInit, OnDestroy {
   private isResizing = false;
   private activePointerId: number | null = null;
 
+  // Subscriptions
+  private subscriptions = new Subscription();
+
+  constructor(
+    private urlParamsService: UrlParamsService,
+    private signatureService: SignatureService
+  ) { }
+
   ngOnInit() {
     // pdf.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    this.loadDefaultSignature();
+
+    // Initialize from URL parameters
+    this.initializeFromUrlParams();
   }
 
   ngOnDestroy() {
     this.removeFlutterCompatibleListeners();
+    this.subscriptions.unsubscribe();
   }
 
-  /** Load the default signature image and store it as a data URL */
-  private loadDefaultSignature() {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      this.currentSignature = canvas.toDataURL();
-    };
-    img.src = 'assets/signature.png';
+  /**
+   * Initialize the application from URL parameters
+   */
+  private initializeFromUrlParams() {
+    const params = this.urlParamsService.getCurrentParams();
+    console.log('Initializing with params:', params);
+
+    // Check if required parameters are present
+    if (!this.urlParamsService.hasRequiredParams()) {
+      const errors = this.urlParamsService.getValidationErrors();
+      this.errors.general = `Missing required parameters: ${errors.join(', ')}`;
+      console.error('URL parameter validation failed:', errors);
+      return;
+    }
+
+    // Load PDF from URL
+    if (params.file) {
+      this.loadPDFFromUrl(params.file);
+    }
+
+    // Load user signatures from Firebase
+    if (params.userId) {
+      this.loadUserSignatures(params.userId);
+    }
   }
 
-  /** Load and render a test PDF */
-  async loadTestPDF() {
+  /**
+   * Load PDF from a URL
+   */
+  private async loadPDFFromUrl(url: string) {
+    console.log('=== Starting PDF Load ===');
+    console.log('Attempting to load PDF from:', url);
+
+    this.loading.pdf = true;
+    this.errors.pdf = null;
+
     try {
-      const response = await fetch('assets/doc1.pdf');
+      // Use proxy if we are in dev mode and it's a firebase storage URL
+      let fetchUrl = url;
+      if (url.includes('firebasestorage.googleapis.com') && window.location.hostname === 'localhost') {
+        fetchUrl = url.replace('https://firebasestorage.googleapis.com', '/firebase-storage');
+        console.log('Using proxy URL:', fetchUrl);
+      }
+
+      console.log('Fetching PDF...');
+      const response = await fetch(fetchUrl);
+      console.log('Fetch response status:', response.status, response.statusText);
+      console.log('Response headers:', {
+        contentType: response.headers.get('content-type'),
+        contentLength: response.headers.get('content-length')
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+      }
+
+      console.log('Converting to array buffer...');
       const arrayBuffer = await response.arrayBuffer();
+      console.log('Array buffer size:', arrayBuffer.byteLength, 'bytes');
+
+      console.log('Loading PDF document...');
       this.pdfDocument = await pdfjsLib.getDocument(arrayBuffer).promise;
 
       this.totalPages = this.pdfDocument.numPages;
       this.currentPageNumber = 1;
       this.signatures = [];
 
+      console.log('PDF loaded successfully! Total pages:', this.totalPages);
+
       await this.renderCurrentPage();
       this.pdfLoaded = true;
+      this.loading.pdf = false;
+      console.log('=== PDF Load Complete ===');
     } catch (error) {
-      console.error('Error loading test PDF:', error);
-      alert('Error loading test PDF file');
+      console.error('=== PDF Load Error ===');
+      console.error('Error details:', error);
+      this.errors.pdf = `Failed to load PDF: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      this.loading.pdf = false;
     }
+  }
+
+  /**
+   * Load user signatures and initials from Firebase Storage
+   */
+  private loadUserSignatures(userId: string) {
+    console.log('Loading signatures for user:', userId);
+    this.loading.signature = true;
+    this.loading.initial = true;
+
+    const sub = this.signatureService.loadUserAssets(userId).subscribe({
+      next: (userSignature) => {
+        console.log('User signature data received:', {
+          hasSignature: !!userSignature.signatureDataUrl,
+          hasInitial: !!userSignature.initialDataUrl
+        });
+
+        if (userSignature.signatureDataUrl) {
+          this.currentSignature = userSignature.signatureDataUrl;
+          console.log('Signature loaded successfully');
+        } else {
+          this.errors.signature = 'Signature not found for this user';
+          console.warn('No signature found for user');
+        }
+
+        if (userSignature.initialDataUrl) {
+          this.currentInitial = userSignature.initialDataUrl;
+          console.log('Initial loaded successfully');
+        } else {
+          this.errors.initial = 'Initial not found for this user';
+          console.warn('No initial found for user');
+        }
+
+        this.loading.signature = false;
+        this.loading.initial = false;
+      },
+      error: (error) => {
+        console.error('Error loading user signatures:', error);
+        this.errors.signature = 'Failed to load signature';
+        this.errors.initial = 'Failed to load initial';
+        this.loading.signature = false;
+        this.loading.initial = false;
+      }
+    });
+
+    this.subscriptions.add(sub);
   }
 
   /** Calculate scale and render current page */
@@ -138,7 +252,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.currentPageData.canvas = canvas;
 
     context.imageSmoothingEnabled = true;
-    // TS wants the string union but most browsers support it — using any to satisfy TS
     (context as any).imageSmoothingQuality = 'high';
 
     const renderContext = {
@@ -200,7 +313,29 @@ export class AppComponent implements OnInit, OnDestroy {
       width: signatureWidth,
       height: signatureHeight,
       page: this.currentPageNumber,
-      imageData: this.currentSignature
+      imageData: this.currentSignature,
+      type: 'signature'
+    });
+  }
+
+  /** Add initial */
+  addInitial() {
+    if (!this.currentInitial || !this.pdfLoaded || !this.currentPageData) return;
+
+    const initialWidth = 60;
+    const initialHeight = 60;
+    const centerX = (this.currentPageData.width - initialWidth) / 2;
+    const centerY = (this.currentPageData.height - initialHeight) / 2;
+
+    this.signatures.push({
+      id: Date.now().toString(),
+      x: centerX,
+      y: centerY,
+      width: initialWidth,
+      height: initialHeight,
+      page: this.currentPageNumber,
+      imageData: this.currentInitial,
+      type: 'initial'
     });
   }
 
@@ -527,7 +662,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
     try {
       const { PDFDocument } = await import('pdf-lib');
-      // pdf.js provides the original array buffer via getData() in many builds
       const existingPdfBytes = await this.pdfDocument.getData();
       const pdfDoc = await PDFDocument.load(existingPdfBytes);
 
