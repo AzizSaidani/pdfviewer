@@ -1,7 +1,8 @@
 [
     {
         "origin": [
-            "http://localhost:4200"
+            "http://localhost:4200",
+            "https://azizsaidani.github.io"
         ],
         "method": [
             "GET",
