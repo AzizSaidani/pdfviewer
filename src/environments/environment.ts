@@ -1,6 +1,7 @@
 export const environment = {
   production: false,
-  firebase: {
+  test: true,
+  firebaseConfig: {
     apiKey: "AIzaSyCZ1Qe3D6_ccxpHAzjImp-u4cYJb2AX6_A",
     authDomain: "bazz-testing-python.firebaseapp.com",
     projectId: "bazz-testing-python",
