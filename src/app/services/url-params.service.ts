@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { UrlParams } from '../models/signature.model';
+import { VALIDATION } from '../constants/app.constants';
 
 /**
  * Service to parse and manage URL parameters from Flutter WebView
@@ -58,9 +59,9 @@ export class UrlParamsService {
      * Prevents XSS and injection attacks
      */
     private isValidId(id: string): boolean {
-        // Allow alphanumeric, hyphens, and underscores (common in Firebase UIDs and envelope IDs)
-        const validPattern = /^[a-zA-Z0-9_-]+$/;
-        return validPattern.test(id) && id.length > 0 && id.length < 256;
+        return VALIDATION.ID_PATTERN.test(id)
+            && id.length >= VALIDATION.MIN_ID_LENGTH
+            && id.length < VALIDATION.MAX_ID_LENGTH;
     }
 
     /**
