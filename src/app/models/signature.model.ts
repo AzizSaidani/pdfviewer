@@ -49,4 +49,5 @@ export interface ErrorState {
 export interface UrlParams {
     file: string | null;
     userId: string | null;
+    envelopeId: string | null;
 }

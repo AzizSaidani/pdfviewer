@@ -30,6 +30,7 @@ export class AppComponent implements OnInit, OnDestroy {
   signatures: SignaturePosition[] = [];
   currentSignature: string | null = null;
   currentInitial: string | null = null;
+  envelopeId: string | null = null;
 
   // Loading and error states
   loading: LoadingState = {
@@ -101,6 +102,12 @@ export class AppComponent implements OnInit, OnDestroy {
     // Load user signatures from Firebase
     if (params.userId) {
       this.loadUserSignatures(params.userId);
+    }
+
+    // Store envelope ID if provided
+    if (params.envelopeId) {
+      this.envelopeId = params.envelopeId;
+      console.log('Envelope ID:', this.envelopeId);
     }
   }
 

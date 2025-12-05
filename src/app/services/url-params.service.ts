@@ -9,7 +9,7 @@ import { UrlParams } from '../models/signature.model';
     providedIn: 'root'
 })
 export class UrlParamsService {
-    private paramsSubject = new BehaviorSubject<UrlParams>({ file: null, userId: null });
+    private paramsSubject = new BehaviorSubject<UrlParams>({ file: null, userId: null, envelopeId: null });
     public params$: Observable<UrlParams> = this.paramsSubject.asObservable();
 
     constructor() {
@@ -25,6 +25,7 @@ export class UrlParamsService {
 
             const file = urlParams.get('file');
             const userId = urlParams.get('userId');
+            const envelopeId = urlParams.get('envelopeId');
 
             // We rely on URLSearchParams to handle the standard decoding.
             // We DO NOT recursively decode because that breaks Firebase Storage URLs
@@ -36,26 +37,30 @@ export class UrlParamsService {
             }
 
             // Validate userId format (basic validation)
-            const validatedUserId = userId && this.isValidUserId(userId) ? userId : null;
+            const validatedUserId = userId && this.isValidId(userId) ? userId : null;
+
+            // Validate envelopeId format (basic validation)
+            const validatedEnvelopeId = envelopeId && this.isValidId(envelopeId) ? envelopeId : null;
 
             this.paramsSubject.next({
                 file: decodedFile,
-                userId: validatedUserId
+                userId: validatedUserId,
+                envelopeId: validatedEnvelopeId
             });
         } catch (error) {
             console.error('Error parsing URL parameters:', error);
-            this.paramsSubject.next({ file: null, userId: null });
+            this.paramsSubject.next({ file: null, userId: null, envelopeId: null });
         }
     }
 
     /**
-     * Basic validation for userId
+     * Basic validation for IDs (userId, envelopeId, etc.)
      * Prevents XSS and injection attacks
      */
-    private isValidUserId(userId: string): boolean {
-        // Allow alphanumeric, hyphens, and underscores (common in Firebase UIDs)
+    private isValidId(id: string): boolean {
+        // Allow alphanumeric, hyphens, and underscores (common in Firebase UIDs and envelope IDs)
         const validPattern = /^[a-zA-Z0-9_-]+$/;
-        return validPattern.test(userId) && userId.length > 0 && userId.length < 256;
+        return validPattern.test(id) && id.length > 0 && id.length < 256;
     }
 
     /**
