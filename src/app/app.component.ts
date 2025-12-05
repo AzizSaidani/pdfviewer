@@ -33,9 +33,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   // Loading and error states
   loading: LoadingState = {
-    pdf: false,
-    signature: false,
-    initial: false
+    pdf: false
   };
 
   errors: ErrorState = {
@@ -117,15 +115,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.errors.pdf = null;
 
     try {
-      // Use proxy if we are in dev mode and it's a firebase storage URL
-      let fetchUrl = url;
-      if (url.includes('firebasestorage.googleapis.com') && window.location.hostname === 'localhost') {
-        fetchUrl = url.replace('https://firebasestorage.googleapis.com', '/firebase-storage');
-        console.log('Using proxy URL:', fetchUrl);
-      }
-
       console.log('Fetching PDF...');
-      const response = await fetch(fetchUrl);
+      const response = await fetch(url);
       console.log('Fetch response status:', response.status, response.statusText);
       console.log('Response headers:', {
         contentType: response.headers.get('content-type'),
@@ -166,8 +157,6 @@ export class AppComponent implements OnInit, OnDestroy {
    */
   private loadUserSignatures(userId: string) {
     console.log('Loading signatures for user:', userId);
-    this.loading.signature = true;
-    this.loading.initial = true;
 
     const sub = this.signatureService.loadUserAssets(userId).subscribe({
       next: (userSignature) => {
@@ -191,16 +180,11 @@ export class AppComponent implements OnInit, OnDestroy {
           this.errors.initial = 'Initial not found for this user';
           console.warn('No initial found for user');
         }
-
-        this.loading.signature = false;
-        this.loading.initial = false;
       },
       error: (error) => {
         console.error('Error loading user signatures:', error);
         this.errors.signature = 'Failed to load signature';
         this.errors.initial = 'Failed to load initial';
-        this.loading.signature = false;
-        this.loading.initial = false;
       }
     });
 

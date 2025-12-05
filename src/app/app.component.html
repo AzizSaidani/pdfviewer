@@ -2,12 +2,10 @@
   <header class="header">
     <!-- Main Controls -->
     <nav class="controls" aria-label="Main actions">
-      <button (click)="addSignature()" class="btn btn-secondary"
-        [disabled]="!pdfLoaded || !currentSignature || loading.signature" title="Add Signature"
-        aria-label="Add Signature">✍️</button>
-      <button (click)="addInitial()" class="btn btn-secondary"
-        [disabled]="!pdfLoaded || !currentInitial || loading.initial" title="Add Initial"
-        aria-label="Add Initial">🔤</button>
+      <button (click)="addSignature()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentSignature"
+        title="Add Signature" aria-label="Add Signature">✍️</button>
+      <button (click)="addInitial()" class="btn btn-secondary" [disabled]="!pdfLoaded || !currentInitial"
+        title="Add Initial" aria-label="Add Initial">🔤</button>
       <button (click)="savePDF()" class="btn btn-success" [disabled]="!pdfLoaded || signatures.length === 0"
         title="Save PDF" aria-label="Save PDF">💾</button>
       <button (click)="clearSignatures()" class="btn btn-warning" [disabled]="signatures.length === 0"
@@ -43,12 +41,6 @@
       <div class="error-message" *ngIf="errors.pdf">
         <h3>⚠️ PDF Load Error</h3>
         <p>{{ errors.pdf }}</p>
-      </div>
-
-      <!-- Signature/Initial Loading -->
-      <div class="info-message" *ngIf="loading.signature || loading.initial">
-        <div class="spinner"></div>
-        <p>Loading signature and initial...</p>
       </div>
 
       <!-- Waiting for PDF -->

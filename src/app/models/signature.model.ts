@@ -31,8 +31,6 @@ export interface SignaturePosition {
  */
 export interface LoadingState {
     pdf: boolean;
-    signature: boolean;
-    initial: boolean;
 }
 
 /**

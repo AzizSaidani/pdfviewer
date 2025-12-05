@@ -94,14 +94,7 @@ export class SignatureService {
      */
     private convertUrlToDataUrl(url: string): Observable<string> {
         return new Observable(observer => {
-            // Use proxy if we are in dev mode and it's a firebase storage URL
-            let fetchUrl = url;
-            if (url.includes('firebasestorage.googleapis.com') && window.location.hostname === 'localhost') {
-                fetchUrl = url.replace('https://firebasestorage.googleapis.com', '/firebase-storage');
-                console.log('Using proxy URL for signature/initial:', fetchUrl);
-            }
-
-            fetch(fetchUrl)
+            fetch(url)
                 .then(response => response.blob())
                 .then(blob => {
                     const reader = new FileReader();
