@@ -63,6 +63,7 @@ export class PdfService {
 
     /**
      * Update the Firestore envelope document to mark a file as signed
+     * Also checks if all files are signed and updates envelope signed status
      * @param envelopeId - The envelope document ID
      * @param fileName - The file name to mark as signed
      */
@@ -86,12 +87,26 @@ export class PdfService {
                     return file;
                 });
 
-                console.log('Updating files array:', updatedFiles);
+                // Check if ALL files are now signed
+                const allFilesSigned = updatedFiles.every((file: any) => file.signed === true);
 
-                // Update the document with the modified files array
-                return from(updateDoc(envelopeRef, {
+                console.log('Updating files array:', updatedFiles);
+                console.log('All files signed:', allFilesSigned);
+
+                // Prepare update object
+                const updateData: any = {
                     files: updatedFiles
-                }));
+                };
+
+                // If all files are signed, mark the envelope as signed and update status
+                if (allFilesSigned) {
+                    updateData.signed = true;
+                    updateData.status = 'finished';
+                    console.log('All PDFs signed! Marking envelope as signed and status as finished.');
+                }
+
+                // Update the document with the modified files array and signed status
+                return from(updateDoc(envelopeRef, updateData));
             }),
             catchError(error => {
                 console.error('Error updating Firestore:', error);
