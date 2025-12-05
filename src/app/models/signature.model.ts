@@ -31,8 +31,7 @@ export interface SignaturePosition {
  */
 export interface LoadingState {
     pdf: boolean;
-    signature: boolean;
-    initial: boolean;
+    saving: boolean;
 }
 
 /**
@@ -51,4 +50,5 @@ export interface ErrorState {
 export interface UrlParams {
     file: string | null;
     userId: string | null;
+    envelopeId: string | null;
 }

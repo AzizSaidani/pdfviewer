@@ -4,6 +4,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { Subscription } from 'rxjs';
 import { UrlParamsService } from './services/url-params.service';
 import { SignatureService } from './services/signature.service';
+import { PdfService } from './services/pdf.service';
 import { SignaturePosition, LoadingState, ErrorState } from './models/signature.model';
 
 interface TouchPosition {
@@ -30,12 +31,15 @@ export class AppComponent implements OnInit, OnDestroy {
   signatures: SignaturePosition[] = [];
   currentSignature: string | null = null;
   currentInitial: string | null = null;
+  envelopeId: string | null = null;
+  pdfUrl: string | null = null;
+  pdfSaved = false;
+  showSuccessMessage = false;
 
   // Loading and error states
   loading: LoadingState = {
     pdf: false,
-    signature: false,
-    initial: false
+    saving: false
   };
 
   errors: ErrorState = {
@@ -63,7 +67,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   constructor(
     private urlParamsService: UrlParamsService,
-    private signatureService: SignatureService
+    private signatureService: SignatureService,
+    private pdfService: PdfService
   ) { }
 
   ngOnInit() {
@@ -97,12 +102,19 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Load PDF from URL
     if (params.file) {
+      this.pdfUrl = params.file;
       this.loadPDFFromUrl(params.file);
     }
 
     // Load user signatures from Firebase
     if (params.userId) {
       this.loadUserSignatures(params.userId);
+    }
+
+    // Store envelope ID if provided
+    if (params.envelopeId) {
+      this.envelopeId = params.envelopeId;
+      console.log('Envelope ID:', this.envelopeId);
     }
   }
 
@@ -117,15 +129,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.errors.pdf = null;
 
     try {
-      // Use proxy if we are in dev mode and it's a firebase storage URL
-      let fetchUrl = url;
-      if (url.includes('firebasestorage.googleapis.com') && window.location.hostname === 'localhost') {
-        fetchUrl = url.replace('https://firebasestorage.googleapis.com', '/firebase-storage');
-        console.log('Using proxy URL:', fetchUrl);
-      }
-
       console.log('Fetching PDF...');
-      const response = await fetch(fetchUrl);
+      const response = await fetch(url);
       console.log('Fetch response status:', response.status, response.statusText);
       console.log('Response headers:', {
         contentType: response.headers.get('content-type'),
@@ -166,8 +171,6 @@ export class AppComponent implements OnInit, OnDestroy {
    */
   private loadUserSignatures(userId: string) {
     console.log('Loading signatures for user:', userId);
-    this.loading.signature = true;
-    this.loading.initial = true;
 
     const sub = this.signatureService.loadUserAssets(userId).subscribe({
       next: (userSignature) => {
@@ -191,16 +194,11 @@ export class AppComponent implements OnInit, OnDestroy {
           this.errors.initial = 'Initial not found for this user';
           console.warn('No initial found for user');
         }
-
-        this.loading.signature = false;
-        this.loading.initial = false;
       },
       error: (error) => {
         console.error('Error loading user signatures:', error);
         this.errors.signature = 'Failed to load signature';
         this.errors.initial = 'Failed to load initial';
-        this.loading.signature = false;
-        this.loading.initial = false;
       }
     });
 
@@ -658,9 +656,23 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   async savePDF() {
-    if (!this.pdfDocument || this.signatures.length === 0) return;
+    if (!this.pdfDocument || this.signatures.length === 0) {
+      this.errors.general = 'Please add at least one signature before saving.';
+      setTimeout(() => this.errors.general = null, 3000);
+      return;
+    }
+
+    if (!this.envelopeId || !this.pdfUrl) {
+      this.errors.general = 'Missing envelope information. Cannot save PDF.';
+      setTimeout(() => this.errors.general = null, 3000);
+      return;
+    }
 
     try {
+      this.loading.saving = true;
+      this.errors.general = null;
+      console.log('Starting PDF save process...');
+
       const { PDFDocument } = await import('pdf-lib');
       const existingPdfBytes = await this.pdfDocument.getData();
       const pdfDoc = await PDFDocument.load(existingPdfBytes);
@@ -668,6 +680,7 @@ export class AppComponent implements OnInit, OnDestroy {
       const scale = this.getPageScale();
       const signaturesByPage = this.groupSignaturesByPage();
 
+      // Add signatures to PDF
       for (const [pageNum, pageSignatures] of signaturesByPage) {
         const page = pdfDoc.getPage(pageNum - 1);
         const { height: pdfHeight } = page.getSize();
@@ -687,10 +700,51 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       }
 
-      this.downloadPDF(await pdfDoc.save());
+      const pdfBytes = await pdfDoc.save();
+
+      // Extract storage path and file name from the original URL
+      const storagePath = this.pdfService.extractStoragePathFromUrl(this.pdfUrl);
+
+      if (!storagePath) {
+        throw new Error('Could not extract storage path from PDF URL');
+      }
+
+      const fileName = this.pdfService.extractFileNameFromPath(storagePath);
+
+      console.log('Uploading to storage path:', storagePath);
+      console.log('File name:', fileName);
+      console.log('Envelope ID:', this.envelopeId);
+
+      // Upload to Firebase Storage and update Firestore
+      this.pdfService.uploadSignedPDF(
+        pdfBytes,
+        storagePath,
+        this.envelopeId,
+        fileName
+      ).subscribe({
+        next: (downloadUrl) => {
+          console.log('PDF saved successfully!', downloadUrl);
+          this.loading.saving = false;
+          this.showSuccessMessage = true;
+
+          // Show success message for 2 seconds, then transition to view-only mode
+          setTimeout(() => {
+            this.showSuccessMessage = false;
+            this.pdfSaved = true;
+          }, 2000);
+        },
+        error: (error) => {
+          console.error('Error uploading PDF:', error);
+          this.loading.saving = false;
+          this.errors.general = 'Failed to save PDF. Please try again.';
+          setTimeout(() => this.errors.general = null, 5000);
+        }
+      });
     } catch (error) {
-      console.error('Error saving PDF:', error);
-      alert('Error saving PDF. Please try again.');
+      console.error('Error processing PDF:', error);
+      this.loading.saving = false;
+      this.errors.general = 'Error processing PDF. Please try again.';
+      setTimeout(() => this.errors.general = null, 5000);
     }
   }
 
@@ -703,15 +757,5 @@ export class AppComponent implements OnInit, OnDestroy {
     return map;
   }
 
-  private downloadPDF(pdfBytes: Uint8Array) {
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'signed-document.pdf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
+
 }
