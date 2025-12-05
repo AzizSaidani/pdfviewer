@@ -31,6 +31,7 @@ export interface SignaturePosition {
  */
 export interface LoadingState {
     pdf: boolean;
+    saving: boolean;
 }
 
 /**
